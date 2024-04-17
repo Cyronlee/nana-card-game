@@ -12,11 +12,26 @@ const spring = {
 
 const CardBody = ({ variant }: { variant: "front" | "back" }) => {
   return (
-    <Box w="100%" h="100%" bgColor={variant === "front" ? "orange" : "cyan"}>
+    <Box
+      w="100%"
+      h="100%"
+      // bgColor={variant === "front" ? "orange" : "cyan"}
+      border="1px solid gray"
+      borderRadius="10px"
+      overflow="hidden"
+    >
       {variant === "front" ? (
-        <img src="/img/poker-front.png" alt="front" />
+        <img
+          style={{ width: "100%", height: "100%" }}
+          src="/img/poker-front.png"
+          alt="front"
+        />
       ) : (
-        <img src="/img/poker-back.png" alt="back" />
+        <img
+          style={{ width: "100%", height: "100%" }}
+          src="/img/poker-back.png"
+          alt="back"
+        />
       )}
     </Box>
   );
@@ -33,9 +48,8 @@ const PokerCard = ({ w, h }: { w: string; h: string }) => {
   const [rotateYaxis, setRotateYaxis] = useState(0);
   const ref = useRef(null);
 
-  const handleMouseMove = (event: MouseEvent) => {
+  const handleMouseMove = (event) => {
     const element = ref.current;
-    // @ts-ignore
     const elementRect = element.getBoundingClientRect();
     const elementWidth = elementRect.width;
     const elementHeight = elementRect.height;
@@ -69,8 +83,6 @@ const PokerCard = ({ w, h }: { w: string; h: string }) => {
       style={{
         perspective: "1200px",
         transformStyle: "preserve-3d",
-        // width: `${props.width}`,
-        // height: `${props.height}`,
         width: w,
         height: h,
       }}
