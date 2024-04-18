@@ -37,7 +37,15 @@ const CardBody = ({ variant }: { variant: "front" | "back" }) => {
   );
 };
 
-const PokerCard = ({ w, h }: { w: string; h: string }) => {
+const PokerCard = ({
+  w,
+  h,
+  layoutId,
+}: {
+  w: string;
+  h: string;
+  layoutId: string;
+}) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
   const handleClick = () => {
@@ -78,6 +86,7 @@ const PokerCard = ({ w, h }: { w: string; h: string }) => {
 
   return (
     <motion.div
+      layoutId={layoutId}
       onClick={handleClick}
       transition={spring}
       style={{

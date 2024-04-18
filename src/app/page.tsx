@@ -2,62 +2,60 @@
 
 import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Box, Button } from "@chakra-ui/react";
+import { Box, Button, Center, VStack, HStack } from "@chakra-ui/react";
+import PokerCard from "@/components/PokerCard";
 
 export default function App() {
   const [cards, setCards] = useState(
-    Array.from({ length: 52 }, (_, index) => index + 1),
+    Array.from({ length: 9 }, (_, index) => index + 1),
   );
   const [myCards, setMyCards] = useState([]);
   const dealCards = () => {
-    let newCards = cards.slice(0, 1);
-    const shuffledCards = [...cards].sort(() => Math.random() - 0.5);
-    const dealtCards = shuffledCards.slice(0, 10);
-    setCards(dealtCards);
+    let newCards = [...cards];
+    let lastCard = newCards.pop();
+    // let newCards = cards.slice(0, -1);
+    setCards(newCards);
+    setMyCards([...myCards, lastCard]);
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-      }}
-    >
-      <AnimatePresence>
-        {cards.map((card, index) => (
-          <motion.div
-            key={card}
-            initial={{ opacity: 0, x: -200, y: 100 * index }}
-            animate={{ opacity: 1, x: 2 + index, y: 2 + index }}
-            exit={{ opacity: 0, x: 200, y: 100 * index }}
-            transition={{ duration: 1 }}
-            style={{ position: "absolute", bottom: 0 }}
-          >
-            <Box
-              bg="cyan.500"
-              w="70px"
-              h="100px"
-              border="1px solid gray"
-              borderRadius="4px"
+    <VStack>
+      <Center h="300px" w="400px" border="1px solid">
+        <AnimatePresence>
+          {cards.map((number, index) => (
+            <motion.div
+              key={number}
+              // layoutId={`card-${number}`}
+              initial={{ opacity: 0, x: -200, y: -100 * index }}
+              animate={{ opacity: 1, x: 2 + index, y: 2 + index }}
+              transition={{ duration: 1 }}
+              style={{ position: "absolute" }}
             >
-              <p style={{ textAlign: "center", fontSize: "24px" }}>{card}</p>
-            </Box>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-      <Button
-        onClick={dealCards}
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-        }}
-      >
-        发牌
-      </Button>
-    </div>
+              <PokerCard
+                // key={number}
+                layoutId={`card-${number}`}
+                w="182px"
+                h="256px"
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </Center>
+      <Button onClick={dealCards}>发牌</Button>
+
+      <VStack>
+        <div>my cards</div>
+        <HStack h="30vh" w="80vw" border="1px solid" justifyContent="center">
+          {myCards.map((number, index) => (
+            <PokerCard
+              key={number}
+              layoutId={`card-${number}`}
+              w="182px"
+              h="256px"
+            />
+          ))}
+        </HStack>
+      </VStack>
+    </VStack>
   );
 }
