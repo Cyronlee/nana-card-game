@@ -5,3 +5,9 @@ export const shuffle = (array: any[]) => {
   }
   return array;
 };
+
+export const popRandom = (array: any[]) => {
+  const randomIndex = Math.floor(Math.random() * array.length);
+  const [removedItem] = array.splice(randomIndex, 1);
+  return removedItem;
+};

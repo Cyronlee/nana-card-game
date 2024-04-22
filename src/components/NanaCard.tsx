@@ -65,27 +65,31 @@ const NanaCard = ({
   cardId,
   w,
   h,
-  onFlipToFront,
-  onFlipToBack,
+  onClick,
+  isRevealed,
+  // onFlipToFront,
+  // onFlipToBack,
 }: {
   cardId: string;
   w: string;
   h: string;
-  onFlipToFront: any;
-  onFlipToBack: any;
+  onClick: (cardId: string) => void;
+  isRevealed: boolean;
+  // onFlipToFront: any;
+  // onFlipToBack: any;
 }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
-
-  const handleClick = () => {
-    setIsFlipped((prevState) => {
-      if (prevState) {
-        onFlipToBack(cardId);
-      } else {
-        onFlipToFront(cardId);
-      }
-      return !prevState;
-    });
-  };
+  // const [isFlipped, setIsFlipped] = useState(false);
+  //
+  // const handleClick = () => {
+  //   setIsFlipped((prevState) => {
+  //     if (prevState) {
+  //       onFlipToBack(cardId);
+  //     } else {
+  //       onFlipToFront(cardId);
+  //     }
+  //     return !prevState;
+  //   });
+  // };
 
   const [rotateXaxis, setRotateXaxis] = useState(0);
   const [rotateYaxis, setRotateYaxis] = useState(0);
@@ -122,7 +126,7 @@ const NanaCard = ({
   return (
     <motion.div
       layoutId={cardId}
-      onClick={handleClick}
+      onClick={() => onClick(cardId)}
       transition={spring}
       style={{
         perspective: "1200px",
@@ -154,12 +158,12 @@ const NanaCard = ({
           }}
         >
           <motion.div
-            animate={{ rotateY: isFlipped ? -180 : 0 }}
+            animate={{ rotateY: isRevealed ? -180 : 0 }}
             transition={spring}
             style={{
               width: "100%",
               height: "100%",
-              zIndex: isFlipped ? 0 : 1,
+              zIndex: isRevealed ? 0 : 1,
               backfaceVisibility: "hidden",
               position: "absolute",
             }}
@@ -168,12 +172,12 @@ const NanaCard = ({
           </motion.div>
           <motion.div
             initial={{ rotateY: 180 }}
-            animate={{ rotateY: isFlipped ? 0 : 180 }}
+            animate={{ rotateY: isRevealed ? 0 : 180 }}
             transition={spring}
             style={{
               width: "100%",
               height: "100%",
-              zIndex: isFlipped ? 1 : 0,
+              zIndex: isRevealed ? 1 : 0,
               backfaceVisibility: "hidden",
               position: "absolute",
             }}
@@ -182,7 +186,7 @@ const NanaCard = ({
           </motion.div>
         </div>
       </motion.div>
-      <span style={{ position: "absolute", top: 0 }}>{cardId}</span>
+      <span style={{ position: "absolute", bottom: 0 }}>{cardId}</span>
     </motion.div>
   );
 };
