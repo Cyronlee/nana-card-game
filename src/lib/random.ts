@@ -11,3 +11,14 @@ export const popRandom = (array: any[]) => {
   const [removedItem] = array.splice(randomIndex, 1);
   return removedItem;
 };
+
+export const randomString = (length: number): string => {
+  const characters = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+
+  return result;
+};
