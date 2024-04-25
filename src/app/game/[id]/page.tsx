@@ -4,16 +4,16 @@ import React, { useEffect, useState } from "react";
 import { useLocalStorageState, useRequest } from "ahooks";
 import { kv } from "@vercel/kv";
 import GameMain from "@/components/GameMain";
-import { ActionPrefix } from "@/app/api/action/route";
+import { ActionPrefix, LocalPlayerInfo } from "@/types";
 
 const GameRoomPage = ({ params }: { params: { id: string } }) => {
   const toast = useToast();
 
-  const [playerInfo] = useLocalStorageState("player-info");
+  const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
 
   const gameStateFetcher = async (): Promise<any> => {
     const res = await fetch(
-      `/api/game-state?id=${params.id}&key=${Date.now()}`,
+      `/api/game-state?id=${params.id}&playerId=${playerInfo?.id}`,
       {
         cache: "no-cache",
       },
@@ -22,24 +22,24 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
   };
 
   const { data, run, cancel } = useRequest(gameStateFetcher, {
-    pollingInterval: 1000,
+    pollingInterval: 2000,
   });
 
-  const act = async (action: ActionPrefix, data?: any) => {
+  const act = async (actionType: ActionPrefix, data?: any) => {
     const res = await fetch("/api/action", {
       method: "POST",
       body: JSON.stringify({
         gameId: params.id,
-        playerId: playerInfo.id,
-        action: action,
+        playerId: playerInfo?.id,
+        action: actionType,
         data: data,
       }),
     });
     if (res.ok) {
       run();
       toast({
-        title: `${action} 执行成功`,
-        description: `action: ${action}, data: ${JSON.stringify(data)}`,
+        title: `${actionType} 执行成功`,
+        description: `action: ${actionType}, data: ${JSON.stringify(data)}`,
         status: "success",
         duration: 2000,
         isClosable: true,
@@ -47,7 +47,7 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
     } else {
       const error = await res.json();
       toast({
-        title: `${action} 执行失败`,
+        title: `${actionType} 执行失败`,
         description: error.error,
         status: "error",
         duration: 2000,

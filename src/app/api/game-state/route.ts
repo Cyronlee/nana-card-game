@@ -1,15 +1,34 @@
 import { kv } from "@vercel/kv";
 import { NextRequest } from "next/server";
+import { ServerState } from "@/types";
+import { getCurrentAndNextPlayer } from "@/lib/game-helper";
+import { settleAndNextRound } from "@/app/api/action/route";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const gameId = searchParams.get("id");
-  const key = searchParams.get("key");
-  console.debug(key);
+  const playerId = searchParams.get("playerId");
 
-  const gameState = await kv.get(`game:${gameId}`);
+  if (gameId == null || playerId == null) {
+    return Response.json({ error: "no permission" }, { status: 400 });
+  }
 
-  return Response.json(gameState);
+  const serverState = await kv.get<ServerState>(`game:${gameId}`);
+
+  if (serverState?.gameSubStage === "sub:settling") {
+    if (Date.now() - serverState.timestamp > 2000) {
+      let [currentPlayer] = getCurrentAndNextPlayer(serverState.players);
+      if (currentPlayer.id === playerId) {
+        await settleAndNextRound(gameId, serverState);
+      }
+    }
+  }
+
+  // TODO add error case
+  // error: game not found
+  // error: you are not in this game
+
+  return Response.json(serverState);
 }
 
 export const runtime = "edge";

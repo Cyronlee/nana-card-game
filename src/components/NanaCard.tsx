@@ -95,8 +95,9 @@ const NanaCard = ({
   const [rotateYaxis, setRotateYaxis] = useState(0);
   const ref = useRef(null);
 
-  const handleMouseMove = (event) => {
+  const handleMouseMove = (event: any) => {
     const element = ref.current;
+    // @ts-ignore
     const elementRect = element.getBoundingClientRect();
     const elementWidth = elementRect.width;
     const elementHeight = elementRect.height;

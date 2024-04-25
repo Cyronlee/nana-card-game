@@ -17,16 +17,20 @@ import { useLocalStorageState } from "ahooks";
 import { randomString } from "@/lib/random";
 // import { useLocalStorage } from "react-use";
 import { useRouter } from "next/navigation";
+import { LocalPlayerInfo } from "@/types";
 
 const GamePage = () => {
   const router = useRouter();
 
-  const [playerInfo, setPlayerInfo] = useLocalStorageState("player-info", {
-    defaultValue: {
-      id: randomString(6),
-      name: "Your Name",
+  const [playerInfo, setPlayerInfo] = useLocalStorageState<LocalPlayerInfo>(
+    "player-info",
+    {
+      defaultValue: {
+        id: randomString(6),
+        name: "Your Name",
+      },
     },
-  });
+  );
 
   const [joinRoomId, setJoinRoomId] = useState("");
 
@@ -36,11 +40,11 @@ const GamePage = () => {
       method: "POST",
       body: JSON.stringify({
         gameId: newGameId,
-        playerId: playerInfo.id,
+        playerId: playerInfo?.id,
         action: "action:host",
         data: {
-          playerId: playerInfo.id,
-          playerName: playerInfo.name,
+          playerId: playerInfo?.id,
+          playerName: playerInfo?.name,
         },
       }),
     });
@@ -55,10 +59,10 @@ const GamePage = () => {
       body: JSON.stringify({
         action: "action:join",
         gameId: joinRoomId,
-        playerId: playerInfo.id,
+        playerId: playerInfo?.id,
         data: {
-          playerId: playerInfo.id,
-          playerName: playerInfo.name,
+          playerId: playerInfo?.id,
+          playerName: playerInfo?.name,
         },
       }),
     });
@@ -81,6 +85,7 @@ const GamePage = () => {
               <Input
                 value={playerInfo?.name}
                 onChange={(e) =>
+                  // @ts-ignore
                   setPlayerInfo((prev) => ({
                     ...prev,
                     name: e.target.value,
@@ -117,8 +122,9 @@ const GamePage = () => {
             <InputGroup>
               <InputLeftAddon>Your Name</InputLeftAddon>
               <Input
-                value={playerInfo.name}
+                value={playerInfo?.name}
                 onChange={(e) =>
+                  // @ts-ignore
                   setPlayerInfo((prev) => ({
                     ...prev,
                     name: e.target.value,

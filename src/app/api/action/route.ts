@@ -1,34 +1,18 @@
 import { kv } from "@vercel/kv";
-import { GameStage, GameSubStage } from "@/types";
-import { Card } from "@/types/server";
-import { popRandom, shuffle } from "@/lib/random";
-
-export type GameStagePrefix = `stage:${string}`;
-export type ActionPrefix = `action:${string}`;
-
-interface Player {
-  id: string;
-  name: string;
-  isHost?: boolean;
-  hand?: Card[];
-}
-
-interface ServerState {
-  gameStage: GameStagePrefix;
-  gameSubStage?: string;
-  players: Player[];
-  cardDeck?: Card[];
-  // player1Cards?: Card[];
-  // player2Cards?: Card[];
-  publicCards?: Card[];
-}
-
-export interface Action {
-  gameId: string;
-  playerId: string;
-  action: ActionPrefix;
-  data?: any;
-}
+import { shuffle } from "@/lib/random";
+import {
+  allRevealedCards,
+  challengeFailed,
+  challengeSuccess,
+  concealAllCards,
+  findMinUnrevealedCardId,
+  findUnrevealedCardId,
+  getCurrentAndNextPlayer,
+  isTurnOver,
+  removeTargetCards,
+} from "@/lib/game-helper";
+import { Action, Card, ServerState } from "@/types";
+import playerInfo from "@/components/PlayerInfo";
 
 const INIT_CARD_IDS = [
   "1-a",
@@ -52,16 +36,25 @@ export async function POST(request: Request) {
   try {
     const action = (await request.json()) as Action;
 
+    // TODO use state design pattern
+    switch (action.action) {
+      case "action:host": {
+      }
+    }
     if (action.action === "action:host") {
       await kv.set<ServerState>(
         `game:${action.gameId}`,
         {
           gameStage: "stage:lobby",
+          timestamp: Date.now(),
           players: [
             {
               id: action.data.playerId,
               name: action.data.playerName,
               isHost: true,
+              isPlaying: false,
+              hand: [],
+              collection: [],
             },
           ],
           cardDeck: [...INIT_CARDS],
@@ -71,62 +64,138 @@ export async function POST(request: Request) {
       );
     }
 
-    const serverState = await getState(action.gameId);
+    const serverState = await getServerState(action.gameId);
+    const [currentPlayer] = getCurrentAndNextPlayer(serverState.players);
 
     if (action.action === "action:join") {
       if (serverState.gameStage !== "stage:lobby") {
         throw new Error("can not join, game is already start");
       }
+      if (
+        serverState.players.length >= 2 &&
+        serverState.players.some((p) => p.id === action.playerId)
+      ) {
+        throw new Error("only support 2 players now");
+      }
       serverState.players.push({
-        id: action.data.playerId,
+        id: action.playerId,
         name: action.data.playerName,
+        isHost: false,
+        isPlaying: false,
+        hand: [],
+        collection: [],
       });
     }
+
     if (action.action === "action:start-game") {
-      if (serverState.gameStage !== "stage:lobby") {
-        throw new Error("game is already start");
-      }
+      // if (serverState.gameStage !== "stage:lobby") {
+      //   throw new Error("game is already start");
+      // }
+
       let shuffled = shuffle([...INIT_CARDS]);
 
       Object.assign<ServerState, Partial<ServerState>>(serverState, {
         gameStage: "stage:in-game",
+        gameSubStage: "sub:playing",
         cardDeck: [],
-        players: serverState.players.map((p) => ({
+        players: serverState.players.map((p, i) => ({
           ...p,
           hand: shuffled.splice(0, 3),
+          collection: [],
+          isPlaying: i === 0,
         })),
         publicCards: shuffled,
       });
     }
 
     if (action.action === "action:reveal-public-card") {
+      if (currentPlayer.id !== action.playerId) {
+        throw new Error("not your turn now");
+      }
+      if (serverState.gameSubStage === "sub:settling") {
+        throw new Error("this round is over, please waiting the settlement");
+      }
       Object.assign<ServerState, Partial<ServerState>>(serverState, {
         publicCards: serverState.publicCards?.map((c) => ({
           ...c,
           isRevealed: c.id === action.data.cardId ? true : c.isRevealed,
         })),
       });
+
+      if (isTurnOver(serverState)) {
+        Object.assign<ServerState, Partial<ServerState>>(serverState, {
+          gameSubStage: "sub:settling",
+          timestamp: Date.now(),
+        });
+        // does not work in vercel serverless function, maybe process shut down when return
+        // settling and restore all cards
+        // setTimeout(() => {
+        //   settleAndNextRound(action, serverState);
+        // }, 100);
+      }
     }
 
+    // if (action.action === "action:reveal-player-card") {
+    //   if (currentPlayer.id !== action.playerId) {
+    //     throw new Error("not your turn now");
+    //   }
+    //   let playerIndex = serverState.players.findIndex(
+    //     (p) => p.id === action.data.playerId,
+    //   );
+    //   const cardIndex = serverState.players[playerIndex].hand?.findIndex(
+    //     (c) => c.id === action.data.cardId,
+    //   );
+    //   serverState.players[playerIndex].hand[cardIndex].isRevealed = true;
+    //
+    //   if (isTurnOver(serverState)) {
+    //     Object.assign<ServerState, Partial<ServerState>>(serverState, {
+    //       gameSubStage: "sub:settling",
+    //       timestamp: Date.now(),
+    //     });
+    //   }
+    // }
+
     if (action.action === "action:reveal-player-card") {
-      let playerIndex = serverState.players.findIndex(
-        (p) => p.id === action.data.playerId,
+      if (currentPlayer.id !== action.playerId) {
+        throw new Error("not your turn now");
+      }
+      const targetPlayer = serverState.players.find(
+        (p) => p.id === action.data.targetPlayerId,
       );
-      const cardIndex = serverState.players[playerIndex].hand.findIndex(
-        (c) => c.id === action.data.cardId,
+      let unrevealedCardId = findUnrevealedCardId(
+        targetPlayer?.hand,
+        action.data.minMax,
       );
-      serverState.players[playerIndex].hand[cardIndex].isRevealed = true;
+      if (!unrevealedCardId) {
+        throw new Error("no more card");
+      }
+
+      const unrevealedCard = targetPlayer?.hand.find(
+        (c) => c.id === unrevealedCardId,
+      );
+      unrevealedCard.isRevealed = true;
+
+      if (isTurnOver(serverState)) {
+        Object.assign<ServerState, Partial<ServerState>>(serverState, {
+          gameSubStage: "sub:settling",
+          timestamp: Date.now(),
+        });
+      }
     }
+
+    // TODO player win this round
+    // TODO next round
+    // TODO game over
 
     await replaceState(action.gameId, serverState);
 
-    return Response.json(serverState);
-  } catch (e) {
+    return Response.json({ status: "ok" });
+  } catch (e: any) {
     return Response.json({ error: e.message }, { status: 400 });
   }
 }
 
-const getState = async (gameId: string) => {
+const getServerState = async (gameId: string) => {
   const serverState = await kv.get<ServerState>(`game:${gameId}`);
   if (!serverState) {
     throw new Error(`No game found for gameId: ${gameId}`);
@@ -134,35 +203,34 @@ const getState = async (gameId: string) => {
   return serverState;
 };
 
-async function replaceState(gameId: string, serverState: ServerState) {
+export async function replaceState(gameId: string, serverState: ServerState) {
   await kv.set<ServerState>(`game:${gameId}`, serverState);
 }
 
-async function updateState(gameId: string, partial: Partial<ServerState>) {
-  const key = `game:${gameId}`;
-  const serverState = await kv.get<ServerState>(key);
-  if (serverState) {
-    Object.assign(serverState, partial);
-    await kv.set<ServerState>(key, serverState);
-  } else {
-    throw new Error(`No server state found for gameId: ${gameId}`);
-  }
-}
-
-async function updateState2<T>(
+export const settleAndNextRound = async (
   gameId: string,
-  updater: (prevState: T) => Partial<T>,
-) {
-  const key = `game:${gameId}`;
-  const prevState = await kv.get<T>(key);
-  if (prevState) {
-    const partialState = updater(prevState);
-    const newState = { ...prevState, ...partialState };
-    await kv.set<T>(key, newState);
-  } else {
-    throw new Error(`No server state found for gameId: ${gameId}`);
+  serverState: ServerState,
+) => {
+  const revealedCards = allRevealedCards(serverState);
+  let [currentPlayer, nextPlayer] = getCurrentAndNextPlayer(
+    serverState.players,
+  );
+  if (challengeFailed(revealedCards)) {
+    // do nothing
+  } else if (challengeSuccess(revealedCards)) {
+    removeTargetCards(serverState, revealedCards[0].number);
+    currentPlayer.collection = [...currentPlayer.collection, ...revealedCards];
   }
-}
 
-export const runtime = "edge";
+  currentPlayer.isPlaying = false;
+  nextPlayer.isPlaying = true;
+
+  serverState.gameSubStage = "sub:playing";
+  serverState.timestamp = Date.now();
+  concealAllCards(serverState);
+
+  await replaceState(gameId, serverState);
+};
+
+export const runtime = "nodejs";
 export const fetchCache = "force-no-store";

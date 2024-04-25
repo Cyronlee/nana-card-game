@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { popRandom, shuffle } from "@/lib/random";
 import { immer } from "zustand/middleware/immer";
-import { ServerGameState } from "@/types/server";
 
 const INIT_CARD_IDS = [
   "1-a",
