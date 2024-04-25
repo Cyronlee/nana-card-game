@@ -1,5 +1,5 @@
 import { Card } from "@/types";
-import { Box, HStack } from "@chakra-ui/react";
+import { Box, HStack, Text } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import NanaCard from "@/components/NanaCard";
 import React from "react";
@@ -17,9 +17,16 @@ const CollectionArea = ({ cards }: { cards: Card[] }) => {
   );
 
   return (
-    <HStack>
+    <HStack
+      sx={{
+        // border: "1px solid white",
+        width: "150px",
+        height: "-webkit-fill-available",
+      }}
+    >
+      {cards.length > 0 && <Text color="white">已收集:</Text>}
       {Object.keys(groupedCards).map((key) => (
-        <Box w="45px" key={key}>
+        <Box h="64px" w="45px" key={key}>
           {groupedCards[key].map((c, i) => (
             <motion.div
               key={c.id}

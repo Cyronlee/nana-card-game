@@ -10,16 +10,13 @@ const PlayerInfo = ({
   player: Player | undefined;
 }) => {
   return (
-    <HStack flex="1" gap="4" alignItems="center" flexWrap="wrap">
-      <Avatar bg="teal.500" />
+    <HStack width="200px" gap="4">
+      <Avatar bg={player?.isPlaying ? "green.500" : "gray.500"} />
       <Box>
         <Heading color="white" size="sm">
-          Player {seatNumber}
+          玩家 {seatNumber} {player?.isPlaying && " - 正在操作"}
         </Heading>
-        <Text color="white">
-          {player ? player.name : "等待加入..."}{" "}
-          {player?.isPlaying && " - playing"}
-        </Text>
+        <Text color="white">{player ? player.name : "等待加入..."} </Text>
       </Box>
     </HStack>
   );

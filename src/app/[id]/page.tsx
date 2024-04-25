@@ -22,7 +22,7 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
   };
 
   const { data, run, cancel } = useRequest(gameStateFetcher, {
-    pollingInterval: 2000,
+    pollingInterval: 1000,
   });
 
   const act = async (actionType: ActionPrefix, data?: any) => {
@@ -43,6 +43,7 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
         status: "success",
         duration: 2000,
         isClosable: true,
+        position: "top-right",
       });
     } else {
       const error = await res.json();
@@ -52,6 +53,7 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
         status: "error",
         duration: 2000,
         isClosable: true,
+        position: "top-right",
       });
     }
   };

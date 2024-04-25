@@ -104,3 +104,24 @@ export const removeTargetCards = (
     (c) => c.number !== targetCardNumber,
   );
 };
+
+export const calculateDisplayPlayerIndices = (
+  myPlayerId: string | undefined,
+  players: Player[],
+) => {
+  const myIndex = players?.findIndex((p) => p.id === myPlayerId);
+  if (myIndex < 0) {
+    return [];
+  }
+
+  let originIndex = [];
+
+  for (let i = 0; i < players.length; i++) {
+    originIndex.push(i);
+  }
+  for (let i = 0; i < players.length; i++) {
+    originIndex.push(i);
+  }
+
+  return originIndex.splice(myIndex, players.length);
+};

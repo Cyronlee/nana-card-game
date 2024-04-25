@@ -5,6 +5,7 @@ import { motion, useSpring } from "framer-motion";
 import { Box } from "@chakra-ui/react";
 
 import Image from "next/image";
+import { SystemStyleObject } from "@chakra-ui/styled-system";
 
 const spring = {
   type: "spring",
@@ -69,10 +70,12 @@ const NanaCard = ({
   isRevealed,
   // onFlipToFront,
   // onFlipToBack,
+  sx,
 }: {
   cardId: string;
   w: string;
   h: string;
+  sx?: SystemStyleObject;
   onClick: (cardId: string) => void;
   isRevealed: boolean;
   // onFlipToFront: any;
@@ -135,6 +138,7 @@ const NanaCard = ({
         width: w,
         height: h,
         cursor: "pointer",
+        ...sx,
       }}
     >
       <motion.div

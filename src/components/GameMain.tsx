@@ -12,6 +12,7 @@ import {
   Button,
   Center,
   HStack,
+  Flex,
   VStack,
   Text,
   ButtonGroup,
@@ -30,6 +31,10 @@ import { ActionPrefix, Card, LocalPlayerInfo, ServerState } from "@/types";
 import CollectionArea from "@/components/CollectionArea";
 import PlayerInfo from "@/components/PlayerInfo";
 import HandArea from "@/components/HandArea";
+import PlayerArea from "@/components/PlayerArea";
+import CardDeck from "@/components/CardDeck";
+import PublicArea from "@/components/PublicArea";
+import { calculateDisplayPlayerIndices } from "@/lib/game-helper";
 
 // const ALL_CARDS = Array.from({ length: 9 }, (_, index) => index + 1);
 const ALL_GAME_CARDS = [
@@ -51,214 +56,109 @@ export default function GameMain({
   serverState: ServerState;
   act: (action: ActionPrefix, data?: any) => void;
 }) {
-  const { width, height } = useWindowSize();
+  // const { width, height } = useWindowSize();
 
   const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
 
-  const toast = useToast();
+  // const toast = useToast();
 
-  useLayoutEffect(() => {
-    console.log(serverState);
-  }, []);
-
-  useEffect(() => {
-    console.log(serverState);
-  }, [serverState]);
-
-  const handleGameStart = () => {
-    act("action:start-game");
-  };
-
-  const player1 = serverState.players.find((p) => p.id == playerInfo?.id);
-  const player2 = serverState.players.find((p) => p.id != playerInfo?.id);
+  const displayPlayerIndices = calculateDisplayPlayerIndices(
+    playerInfo?.id,
+    serverState.players,
+  );
 
   return (
-    <Center w={width} h={900} bgColor="gray.100">
-      {/*<Confetti*/}
-      {/*  width={width}*/}
-      {/*  height={height}*/}
-      {/*  recycle={false}*/}
-      {/*  run={gameSubStage === "win"}*/}
-      {/*  onConfettiComplete={() => setRoundStage("")}*/}
-      {/*/>*/}
-      <VStack
-      // w="100vw"
-      // h="100vh"
-      >
-        <HStack>
-          <Button
-            colorScheme="green"
-            onClick={() =>
-              act("action:reveal-player-card", {
-                targetPlayerId: player2?.id,
-                minMax: "min",
-              })
-            }
-          >
-            最小
-          </Button>
+    <Center
+      w="100vw"
+      h="100vh"
+      bgColor="gray.700"
+      sx={{
+        position: "relative",
+      }}
+      justifyContent="space-evenly"
+    >
+      <VStack sx={{ position: "fixed", top: "16px", right: "16px" }}>
+        <Button
+          colorScheme="blue"
+          onClick={() => act("action:start-game")}
+          // isDisabled={gameStage !== "seat"}
+        >
+          开始游戏
+        </Button>
+        <Button
+          colorScheme="blue"
+          onClick={() => act("action:restart-game")}
+          // isDisabled={gameStage !== "seat"}
+        >
+          重新开始
+        </Button>
+      </VStack>
 
-          <HStack w="900px" bgColor="#333" paddingX="24px" borderRadius="24px">
-            <PlayerInfo seatNumber={2} player={player2}></PlayerInfo>
+      <VStack h="100vh" flex={3} gap="16px" justifyContent="center">
+        <PlayerArea
+          player={serverState.players[displayPlayerIndices[2]]}
+          act={act}
+        ></PlayerArea>
+        <PlayerArea
+          player={serverState.players[displayPlayerIndices[1]]}
+          act={act}
+        ></PlayerArea>
+      </VStack>
 
-            <HandArea
-              cards={player2?.hand}
-              onCardClick={(cardId) => {
-                // act("action:reveal-player-card", {
-                //   playerId: player2?.id,
-                //   cardId: cardId,
-                // });
-              }}
-            />
-            <Box h="136px" padding="8px">
-              {player2?.collection && (
-                <CollectionArea cards={player2.collection}></CollectionArea>
-              )}
-            </Box>
-          </HStack>
-          <Button
-            colorScheme="green"
-            onClick={() =>
-              act("action:reveal-player-card", {
-                targetPlayerId: player2?.id,
-                minMax: "max",
-              })
-            }
-          >
-            最大
-          </Button>
-        </HStack>
+      <VStack flex={4} h="100vh" justifyContent="center">
+        <PlayerArea
+          player={serverState.players[displayPlayerIndices[3]]}
+          act={act}
+        ></PlayerArea>
 
-        <HStack
-          w="1200px"
-          // h="400px"
+        <VStack
+          // w="576px"
+          w="100%"
+          h="400px"
           padding="24px"
-          border="24px solid "
-          bgColor="#333"
-          borderRadius="96px"
+          bgColor="gray.700"
+          borderRadius="16px"
           justifyContent="center"
         >
-          <Center
-            w="140px"
-            h="180px"
-            borderRadius="24px"
-            // bgColor="#fff"
-            border="2px solid white"
-          >
-            {serverState?.cardDeck?.map((card, index) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, x: -200, y: -100 * index }}
-                animate={{ opacity: 1, x: 2 + index, y: 2 + index }}
-                transition={{ duration: 1 }}
-                style={{ position: "absolute" }}
+          <Text color="white">
+            游戏ID: {serverState.gameId} 服务器状态: {serverState.gameStage} -{" "}
+            {serverState.gameSubStage} - {serverState.timestamp}
+          </Text>
+          {/*<Text color="white">公共区</Text>*/}
+          {serverState?.cardDeck && serverState.cardDeck.length > 0 && (
+            <VStack>
+              <CardDeck cards={serverState.cardDeck}></CardDeck>
+              <Button
+                colorScheme="blue"
+                onClick={() => act("action:start-game")}
+                // isDisabled={gameStage !== "seat"}
               >
-                <NanaCard
-                  onClick={(cardId) => {}}
-                  key={card.id}
-                  cardId={card.id}
-                  isRevealed={card.isRevealed}
-                  w="90px"
-                  h="120px"
-                />
-              </motion.div>
-            ))}
-          </Center>
-          <VStack
-            w="600px"
-            h="320px"
-            // bgColor="#fff"
-            border="2px solid white"
-            borderRadius="24px"
-          >
-            <Text color="white">
-              游戏状态: {serverState.gameStage} - {serverState.gameSubStage} -{" "}
-              {serverState.timestamp}
-            </Text>
-            <Text color="white">公共区</Text>
-            <HStack padding="8px" flexWrap="wrap">
-              {serverState?.publicCards?.map((card) => (
-                <NanaCard
-                  onClick={(cardId) =>
-                    act("action:reveal-public-card", { cardId: card.id })
-                  }
-                  key={card.id}
-                  cardId={card.id}
-                  isRevealed={card.isRevealed}
-                  w="90px"
-                  h="120px"
-                />
-              ))}
-            </HStack>
-          </VStack>
+                开始游戏
+              </Button>
+            </VStack>
+          )}
 
-          <VStack>
-            <Button
-              colorScheme="green"
-              onClick={() => handleGameStart()}
-              // isDisabled={gameStage !== "seat"}
-            >
-              开始游戏
-            </Button>
-            {/*<Button colorScheme="green" onClick={() => shuffleCards()}>*/}
-            {/*  洗牌*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => dealRandomCard("bot")}>*/}
-            {/*  发牌给机器人*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => dealRandomCard("public")}>*/}
-            {/*  发牌到公共区*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => dealRandomCard("me")}>*/}
-            {/*  发牌给我*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => resetGame()}>*/}
-            {/*  重置*/}
-            {/*</Button>*/}
-          </VStack>
-        </HStack>
+          {serverState?.publicCards && (
+            <PublicArea cards={serverState?.publicCards} act={act}></PublicArea>
+          )}
+        </VStack>
 
-        <HStack>
-          <Button
-            colorScheme="green"
-            onClick={() =>
-              act("action:reveal-player-card", {
-                targetPlayerId: player1?.id,
-                minMax: "min",
-              })
-            }
-          >
-            最小
-          </Button>
-          <HStack w="900px" bgColor="#333" paddingX="24px" borderRadius="24px">
-            <PlayerInfo seatNumber={1} player={player1}></PlayerInfo>
-            <HandArea
-              cards={player1?.hand}
-              onCardClick={(cardId) => {
-                // act("action:reveal-player-card", {
-                //   playerId: player1?.id,
-                //   cardId: cardId,
-                // });
-              }}
-            />
-            <Box h="136px" padding="8px">
-              {player1?.collection && (
-                <CollectionArea cards={player1.collection}></CollectionArea>
-              )}
-            </Box>
-          </HStack>
-          <Button
-            colorScheme="green"
-            onClick={() =>
-              act("action:reveal-player-card", {
-                targetPlayerId: player1?.id,
-                minMax: "max",
-              })
-            }
-          >
-            最大
-          </Button>
-        </HStack>
+        <PlayerArea
+          isMe={true}
+          player={serverState.players[displayPlayerIndices[0]]}
+          act={act}
+        ></PlayerArea>
+      </VStack>
+
+      <VStack flex={3} h="100vh" gap="16px" justifyContent="center">
+        <PlayerArea
+          player={serverState.players[displayPlayerIndices[4]]}
+          act={act}
+        ></PlayerArea>
+        <PlayerArea
+          player={serverState.players[displayPlayerIndices[5]]}
+          act={act}
+        ></PlayerArea>
       </VStack>
     </Center>
   );

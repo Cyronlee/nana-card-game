@@ -1,268 +1,196 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Button,
-  Center,
-  HStack,
-  VStack,
+  Card,
+  CardBody,
+  CardFooter,
+  Divider,
+  Heading,
   Text,
-  ButtonGroup,
+  Input,
+  Center,
+  InputGroup,
+  InputLeftAddon,
+  VStack,
   useToast,
 } from "@chakra-ui/react";
-import NanaCard from "@/components/NanaCard";
-import { shuffle } from "@/lib/random";
-import { useGameStore } from "@/store/game-store";
-import Confetti from "react-confetti";
-import { useWindowSize } from "react-use";
+import React, { useState } from "react";
+import { useLocalStorageState } from "ahooks";
+import { randomString } from "@/lib/random";
+// import { useLocalStorage } from "react-use";
+import { useRouter } from "next/navigation";
+import { LocalPlayerInfo } from "@/types";
 
-// const ALL_CARDS = Array.from({ length: 9 }, (_, index) => index + 1);
-const ALL_GAME_CARDS = [
-  "1-a",
-  "1-b",
-  "1-c",
-  "2-a",
-  "2-b",
-  "2-c",
-  // "3-a",
-  // "3-b",
-  // "3-c",
-];
-
-export default function App() {
-  const { width, height } = useWindowSize();
+const GamePage = () => {
+  const router = useRouter();
   const toast = useToast();
-  // const [cardDeck, setCardDeck] = useState(ALL_GAME_CARDS);
-  // const [myCards, setMyCards] = useState([]);
-  // const [botCards, setBotCards] = useState([]);
-  // const [publicCards, setPublicCards] = useState([]);
-  const [roundStage, setRoundStage] = useState("");
-  // const [revealedCards, setRevealedCards] = useState<string[]>([]);
 
-  const {
-    players,
-    gameStage,
-    setGameStage,
-    dealRandomCardTo,
-    gameSubStage,
-    cardDeck,
-    publicCards,
-    getPlayer,
-    dealRestOfCards,
-    revealPublicCard,
-    revealPlayerCard,
-    resetTable,
-    getRevealedCards,
-  } = useGameStore();
+  const [playerInfo, setPlayerInfo] = useLocalStorageState<LocalPlayerInfo>(
+    "player-info",
+    {
+      defaultValue: {
+        id: randomString(6),
+        name: "",
+      },
+    },
+  );
 
-  const handleGameStart = () => {
-    if (gameStage === "seat") {
-      setGameStage("in-game");
-      dealCards();
-    }
-  };
+  const [joinRoomId, setJoinRoomId] = useState("");
 
-  const dealCards = () => {
-    let times = 0;
-    let intervalId = setInterval(() => {
-      dealRandomCardTo("me");
-      dealRandomCardTo("bot");
-      // dealRandomCard("public");
-      if (++times >= 3) {
-        clearInterval(intervalId);
-        setTimeout(() => {
-          dealRestOfCards();
-        }, 500);
-      }
-    }, 500);
-  };
-
-  const resetGame = () => {
-    resetTable();
-  };
-
-  useEffect(() => {
-    const revealedCards = getRevealedCards();
-    if (revealedCards.length <= 1) {
-      return;
-    }
-    for (let i = 1; i < revealedCards.length; i++) {
-      if (
-        revealedCards[i].id.split("-")[0] !== revealedCards[0].id.split("-")[0]
-      ) {
-        setTimeout(() => {
-          setRoundStage("failed");
-          toast({
-            title: "挑战失败",
-            description: "试着连续翻出三张一样的数字",
-            status: "error",
-            duration: 9000,
-            isClosable: true,
-          });
-        }, 1000);
-        return;
-      }
-    }
-    if (revealedCards.length >= 3) {
-      setRoundStage("success");
+  const hostRoom = async () => {
+    if (!playerInfo?.name) {
       toast({
-        title: "挑战成功",
-        description: "恭喜你连续翻出三张相同数字",
-        status: "success",
-        duration: 9000,
+        title: `请输入玩家名称`,
+        status: "error",
+        duration: 2000,
         isClosable: true,
+        position: "top",
       });
       return;
     }
-  }, [getRevealedCards()]);
+    let newGameId = randomString(6);
+    const res = await fetch("/api/action", {
+      method: "POST",
+      body: JSON.stringify({
+        gameId: newGameId,
+        playerId: playerInfo?.id,
+        action: "action:host",
+        data: {
+          playerId: playerInfo?.id,
+          playerName: playerInfo?.name,
+        },
+      }),
+    });
+    if (res.ok) {
+      router.push(`/${newGameId}`);
+    }
+  };
 
-  const revealMyMinCard = () => {
-    // onFlipToFront(myCards[0]);
+  const joinRoom = async () => {
+    if (!playerInfo?.name) {
+      toast({
+        title: `请输入玩家名称`,
+        status: "error",
+        duration: 2000,
+        isClosable: true,
+        position: "top",
+      });
+      return;
+    }
+    const res = await fetch("/api/action", {
+      method: "POST",
+      body: JSON.stringify({
+        action: "action:join",
+        gameId: joinRoomId,
+        playerId: playerInfo?.id,
+        data: {
+          playerId: playerInfo?.id,
+          playerName: playerInfo?.name,
+        },
+      }),
+    });
+    if (res.ok) {
+      router.push(`/${joinRoomId}`);
+    }
   };
 
   return (
-    <Center w="100vw" h="100vh" bgColor="gray.100">
-      <Confetti
-        width={width}
-        height={height}
-        recycle={false}
-        run={gameSubStage === "win"}
-        onConfettiComplete={() => setRoundStage("")}
-      />
-      <VStack
-      // w="100vw"
-      // h="100vh"
-      >
-        <Text>Game Stage: {gameStage}</Text>
-        <Text>Round Stage: {roundStage}</Text>
-
-        <VStack w="900px" bgColor="#333" borderRadius="24px">
-          <Text color="white">电脑</Text>
-          <HStack h="136px" padding="8px" flexWrap="wrap">
-            {getPlayer("bot").hand.map((card, index) => (
-              <NanaCard
-                onClick={(cardId) => revealPlayerCard("bot", card.id)}
-                key={card.id}
-                cardId={card.id}
-                isRevealed={card.isRevealed}
-                w="90px"
-                h="120px"
-              />
-            ))}
-          </HStack>
-        </VStack>
-
-        <HStack
-          w="1200px"
-          // h="400px"
-          padding="24px"
-          border="24px solid "
-          bgColor="#333"
-          borderRadius="96px"
-          justifyContent="center"
+    <Center w="100vw" h="100vh">
+      <VStack>
+        <Text
+          bgGradient="linear(to-l, #7928CA, #FF0080)"
+          bgClip="text"
+          fontSize="6xl"
+          fontWeight="extrabold"
         >
-          <Center
-            w="140px"
-            h="180px"
-            borderRadius="24px"
-            // bgColor="#fff"
-            border="2px solid white"
-          >
-            {cardDeck.map((card, index) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, x: -200, y: -100 * index }}
-                animate={{ opacity: 1, x: 2 + index, y: 2 + index }}
-                transition={{ duration: 1 }}
-                style={{ position: "absolute" }}
-              >
-                <NanaCard
-                  onClick={(cardId) => {}}
-                  key={card.id}
-                  cardId={card.id}
-                  isRevealed={card.isRevealed}
-                  w="90px"
-                  h="120px"
+          NANA Card Game
+        </Text>
+        <Text
+          bgGradient="linear(to-l, #7928CA, #FF0080)"
+          bgClip="text"
+          fontSize="lg"
+          fontWeight="extrabold"
+        >
+          2 ~ 6 Players Online
+        </Text>
+        <Card w="sm">
+          <CardBody>
+            <VStack spacing="24px" alignItems="start">
+              <Heading size="md">Create Game</Heading>
+              {/*<Heading size="md">*/}
+              {/*  {playerInfo.id} {playerInfo.name}*/}
+              {/*</Heading>*/}
+              <InputGroup>
+                <InputLeftAddon>Your Name</InputLeftAddon>
+                <Input
+                  value={playerInfo?.name}
+                  onChange={(e) =>
+                    // @ts-ignore
+                    setPlayerInfo((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="Your Name"
                 />
-              </motion.div>
-            ))}
-          </Center>
-          <VStack
-            w="600px"
-            h="320px"
-            // bgColor="#fff"
-            border="2px solid white"
-            borderRadius="24px"
-          >
-            <Text fontColor="white">公共区</Text>
-            <HStack padding="8px" flexWrap="wrap">
-              {publicCards.map((card) => (
-                <NanaCard
-                  onClick={(cardId) => revealPublicCard(card.id)}
-                  key={card.id}
-                  cardId={card.id}
-                  isRevealed={card.isRevealed}
-                  w="90px"
-                  h="120px"
-                />
-              ))}
-            </HStack>
-          </VStack>
-
-          <VStack>
+              </InputGroup>
+            </VStack>
+          </CardBody>
+          <Divider sx={{ borderColor: "gray.300" }} />
+          <CardFooter justifyContent="flex-end">
             <Button
-              colorScheme="green"
-              onClick={() => handleGameStart()}
-              isDisabled={gameStage !== "seat"}
+              size="sm"
+              variant="solid"
+              colorScheme="blue"
+              onClick={() => hostRoom()}
             >
-              开始游戏
+              Create
             </Button>
-            {/*<Button colorScheme="green" onClick={() => shuffleCards()}>*/}
-            {/*  洗牌*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => dealRandomCard("bot")}>*/}
-            {/*  发牌给机器人*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => dealRandomCard("public")}>*/}
-            {/*  发牌到公共区*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => dealRandomCard("me")}>*/}
-            {/*  发牌给我*/}
-            {/*</Button>*/}
-            <Button colorScheme="green" onClick={() => resetGame()}>
-              重置
-            </Button>
-          </VStack>
-        </HStack>
-
-        <HStack>
-          <Button colorScheme="green" onClick={() => revealMyMinCard()}>
-            最小
-          </Button>
-          <VStack w="900px" bgColor="#333" borderRadius="24px">
-            <Text color="white">
-              已揭示的卡牌：
-              {getRevealedCards()
-                .map((c) => c.id)
-                .join(", ")}
-            </Text>
-            <HStack h="136px" padding="8px" flexWrap="wrap">
-              {getPlayer("me").hand.map((card) => (
-                <NanaCard
-                  onClick={(cardId) => revealPlayerCard("me", card.id)}
-                  key={card.id}
-                  cardId={card.id}
-                  isRevealed={card.isRevealed}
-                  w="90px"
-                  h="120px"
+          </CardFooter>
+        </Card>
+        <Card w="sm">
+          <CardBody>
+            <VStack spacing="24px" alignItems="start">
+              <Heading size="md">Join Game</Heading>
+              <InputGroup>
+                <InputLeftAddon>Game ID</InputLeftAddon>
+                <Input
+                  placeholder="Game ID"
+                  onChange={(e) => setJoinRoomId(e.target.value)}
                 />
-              ))}
-            </HStack>
-          </VStack>
-          <Button colorScheme="green">最大</Button>
-        </HStack>
+              </InputGroup>
+              <InputGroup>
+                <InputLeftAddon>Your Name</InputLeftAddon>
+                <Input
+                  value={playerInfo?.name}
+                  onChange={(e) =>
+                    // @ts-ignore
+                    setPlayerInfo((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="Your Name"
+                />
+              </InputGroup>
+            </VStack>
+          </CardBody>
+          <Divider sx={{ borderColor: "gray.300" }} />
+          <CardFooter justifyContent="flex-end">
+            <Button
+              size="sm"
+              variant="solid"
+              colorScheme="blue"
+              onClick={() => joinRoom()}
+            >
+              Join
+            </Button>
+          </CardFooter>
+        </Card>
       </VStack>
     </Center>
   );
-}
+};
+
+export default GamePage;

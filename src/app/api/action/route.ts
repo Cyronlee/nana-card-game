@@ -13,24 +13,25 @@ import {
 } from "@/lib/game-helper";
 import { Action, Card, ServerState } from "@/types";
 import playerInfo from "@/components/PlayerInfo";
+import { ALL_CARDS, GAME_RULES } from "@/lib/rules";
 
-const INIT_CARD_IDS = [
-  "1-a",
-  "1-b",
-  "1-c",
-  "2-a",
-  "2-b",
-  "2-c",
-  "3-a",
-  "3-b",
-  "3-c",
-];
-
-const INIT_CARDS: Card[] = INIT_CARD_IDS.map((id) => ({
-  id: id,
-  number: id.split("-")[0] as unknown as number,
-  isRevealed: false,
-}));
+// const INIT_CARD_IDS = [
+//   "1-a",
+//   "1-b",
+//   "1-c",
+//   "2-a",
+//   "2-b",
+//   "2-c",
+//   "3-a",
+//   "3-b",
+//   "3-c",
+// ];
+//
+// const INIT_CARDS: Card[] = INIT_CARD_IDS.map((id) => ({
+//   id: id,
+//   number: id.split("-")[0] as unknown as number,
+//   isRevealed: false,
+// }));
 
 export async function POST(request: Request) {
   try {
@@ -45,19 +46,21 @@ export async function POST(request: Request) {
       await kv.set<ServerState>(
         `game:${action.gameId}`,
         {
+          gameId: action.gameId,
           gameStage: "stage:lobby",
           timestamp: Date.now(),
           players: [
             {
               id: action.data.playerId,
               name: action.data.playerName,
+              seat: 1,
               isHost: true,
               isPlaying: false,
               hand: [],
               collection: [],
             },
           ],
-          cardDeck: [...INIT_CARDS],
+          cardDeck: ALL_CARDS,
           publicCards: [],
         },
         { ex: 60 * 60 },
@@ -66,13 +69,14 @@ export async function POST(request: Request) {
 
     const serverState = await getServerState(action.gameId);
     const [currentPlayer] = getCurrentAndNextPlayer(serverState.players);
+    const playerNumber = serverState.players.length;
 
     if (action.action === "action:join") {
       if (serverState.gameStage !== "stage:lobby") {
         throw new Error("can not join, game is already start");
       }
       if (
-        serverState.players.length >= 2 &&
+        playerNumber >= 6 &&
         serverState.players.some((p) => p.id === action.playerId)
       ) {
         throw new Error("only support 2 players now");
@@ -80,6 +84,7 @@ export async function POST(request: Request) {
       serverState.players.push({
         id: action.playerId,
         name: action.data.playerName,
+        seat: playerNumber + 1,
         isHost: false,
         isPlaying: false,
         hand: [],
@@ -91,8 +96,12 @@ export async function POST(request: Request) {
       // if (serverState.gameStage !== "stage:lobby") {
       //   throw new Error("game is already start");
       // }
+      if (playerNumber <= 1) {
+        throw new Error("requires two or more players");
+      }
+      const gameRule = GAME_RULES[playerNumber];
 
-      let shuffled = shuffle([...INIT_CARDS]);
+      let shuffled: Card[] = shuffle([...gameRule.cards]);
 
       Object.assign<ServerState, Partial<ServerState>>(serverState, {
         gameStage: "stage:in-game",
@@ -100,7 +109,9 @@ export async function POST(request: Request) {
         cardDeck: [],
         players: serverState.players.map((p, i) => ({
           ...p,
-          hand: shuffled.splice(0, 3),
+          hand: shuffled
+            .splice(0, gameRule.handNumber)
+            .sort((a, b) => a.number - b.number),
           collection: [],
           isPlaying: i === 0,
         })),
