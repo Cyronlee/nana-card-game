@@ -5,33 +5,13 @@ import {
   challengeFailed,
   challengeSuccess,
   concealAllCards,
-  findMinUnrevealedCardId,
   findUnrevealedCardId,
   getCurrentAndNextPlayer,
   isTurnOver,
   removeTargetCards,
 } from "@/lib/game-helper";
 import { Action, Card, ServerState } from "@/types";
-import playerInfo from "@/components/PlayerInfo";
 import { ALL_CARDS, GAME_RULES } from "@/lib/rules";
-
-// const INIT_CARD_IDS = [
-//   "1-a",
-//   "1-b",
-//   "1-c",
-//   "2-a",
-//   "2-b",
-//   "2-c",
-//   "3-a",
-//   "3-b",
-//   "3-c",
-// ];
-//
-// const INIT_CARDS: Card[] = INIT_CARD_IDS.map((id) => ({
-//   id: id,
-//   number: id.split("-")[0] as unknown as number,
-//   isRevealed: false,
-// }));
 
 export async function POST(request: Request) {
   try {
@@ -120,6 +100,9 @@ export async function POST(request: Request) {
     }
 
     if (action.action === "action:reveal-public-card") {
+      if (serverState.gameStage === "stage:game-over") {
+        throw new Error("game is already over");
+      }
       if (currentPlayer.id !== action.playerId) {
         throw new Error("not your turn now");
       }
@@ -167,6 +150,9 @@ export async function POST(request: Request) {
     // }
 
     if (action.action === "action:reveal-player-card") {
+      if (serverState.gameStage === "stage:game-over") {
+        throw new Error("game is already over");
+      }
       if (currentPlayer.id !== action.playerId) {
         throw new Error("not your turn now");
       }
@@ -194,13 +180,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // TODO player win this round
-    // TODO next round
-    // TODO game over
-
     await replaceState(action.gameId, serverState);
 
-    return Response.json({ status: "ok" });
+    return Response.json(serverState);
   } catch (e: any) {
     return Response.json({ error: e.message }, { status: 400 });
   }
@@ -217,6 +199,19 @@ const getServerState = async (gameId: string) => {
 export async function replaceState(gameId: string, serverState: ServerState) {
   await kv.set<ServerState>(`game:${gameId}`, serverState);
 }
+
+export const markGameOver = async (
+  gameId: string,
+  serverState: ServerState,
+) => {
+  Object.assign<ServerState, Partial<ServerState>>(serverState, {
+    gameStage: "stage:game-over",
+    gameSubStage: null,
+    timestamp: Date.now(),
+  });
+
+  await replaceState(gameId, serverState);
+};
 
 export const settleAndNextRound = async (
   gameId: string,

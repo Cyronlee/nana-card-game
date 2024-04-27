@@ -5,7 +5,7 @@ export type ActionPrefix = `action:${string}`;
 export interface ServerState {
   gameId: string;
   gameStage: GameStagePrefix;
-  gameSubStage?: SubStagePrefix;
+  gameSubStage?: SubStagePrefix | null;
   timestamp: number;
   players: Player[];
   cardDeck?: Card[];
@@ -17,6 +17,7 @@ export interface Player {
   name: string;
   seat: number;
   isHost?: boolean;
+  isWon?: boolean;
   isPlaying?: boolean;
   hand: Card[];
   collection: Card[];

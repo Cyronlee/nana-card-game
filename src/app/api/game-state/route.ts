@@ -1,8 +1,8 @@
 import { kv } from "@vercel/kv";
 import { NextRequest } from "next/server";
 import { ServerState } from "@/types";
-import { getCurrentAndNextPlayer } from "@/lib/game-helper";
-import { settleAndNextRound } from "@/app/api/action/route";
+import { getCurrentAndNextPlayer, isGameOver } from "@/lib/game-helper";
+import { markGameOver, settleAndNextRound } from "@/app/api/action/route";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -17,9 +17,14 @@ export async function GET(request: NextRequest) {
 
   if (serverState?.gameSubStage === "sub:settling") {
     if (Date.now() - serverState.timestamp > 2000) {
-      let [currentPlayer] = getCurrentAndNextPlayer(serverState.players);
-      if (currentPlayer.id === playerId) {
-        await settleAndNextRound(gameId, serverState);
+      // start to settle
+      if (isGameOver(serverState)) {
+        await markGameOver(gameId, serverState);
+      } else {
+        let [currentPlayer] = getCurrentAndNextPlayer(serverState.players);
+        if (currentPlayer.id === playerId) {
+          await settleAndNextRound(gameId, serverState);
+        }
       }
     }
   }

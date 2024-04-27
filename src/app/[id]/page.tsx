@@ -4,14 +4,14 @@ import React, { useEffect, useState } from "react";
 import { useLocalStorageState, useRequest } from "ahooks";
 import { kv } from "@vercel/kv";
 import GameMain from "@/components/GameMain";
-import { ActionPrefix, LocalPlayerInfo } from "@/types";
+import { ActionPrefix, LocalPlayerInfo, ServerState } from "@/types";
 
 const GameRoomPage = ({ params }: { params: { id: string } }) => {
   const toast = useToast();
 
   const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
 
-  const gameStateFetcher = async (): Promise<any> => {
+  const gameStateFetcher = async (): Promise<ServerState> => {
     const res = await fetch(
       `/api/game-state?id=${params.id}&playerId=${playerInfo?.id}`,
       {
@@ -21,11 +21,18 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
     return res.json();
   };
 
-  const { data, run, cancel } = useRequest(gameStateFetcher, {
-    pollingInterval: 1000,
+  const {
+    data: serverState,
+    // refresh: refreshServerState,
+    mutate: mutateServerState,
+  } = useRequest(gameStateFetcher, {
+    pollingInterval: 2000,
   });
 
-  const act = async (actionType: ActionPrefix, data?: any) => {
+  const actionExecutor = async (
+    actionType: ActionPrefix,
+    data?: any,
+  ): Promise<ServerState> => {
     const res = await fetch("/api/action", {
       method: "POST",
       body: JSON.stringify({
@@ -35,30 +42,40 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
         data: data,
       }),
     });
-    if (res.ok) {
-      run();
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error);
+    }
+    return res.json();
+  };
+
+  const { run: act, loading: actLoading } = useRequest(actionExecutor, {
+    debounceWait: 800,
+    manual: true,
+    onSuccess: (result, params) => {
+      mutateServerState(result);
       toast({
-        title: `${actionType} 执行成功`,
-        description: `action: ${actionType}, data: ${JSON.stringify(data)}`,
+        title: `操作成功`,
+        description: `${JSON.stringify(params)}`,
         status: "success",
         duration: 2000,
         isClosable: true,
         position: "top-right",
       });
-    } else {
-      const error = await res.json();
+    },
+    onError: (error) => {
       toast({
-        title: `${actionType} 执行失败`,
-        description: error.error,
+        title: `操作失败`,
+        description: error.message,
         status: "error",
         duration: 2000,
         isClosable: true,
         position: "top-right",
       });
-    }
-  };
+    },
+  });
 
-  return <>{data && <GameMain serverState={data} act={act} />}</>;
+  return <>{serverState && <GameMain serverState={serverState} act={act} />}</>;
 };
 
 export default GameRoomPage;

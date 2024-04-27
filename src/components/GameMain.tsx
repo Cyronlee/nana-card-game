@@ -1,53 +1,14 @@
 "use client";
 
-import React, {
-  memo,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  Button,
-  Center,
-  HStack,
-  Flex,
-  VStack,
-  Text,
-  ButtonGroup,
-  useToast,
-  Avatar,
-  Box,
-  Heading,
-} from "@chakra-ui/react";
-import NanaCard from "@/components/NanaCard";
-import Confetti from "react-confetti";
-import { useWindowSize } from "react-use";
-import { useClientGameStore } from "@/store/client-game-store";
+import React, { useEffect } from "react";
+import { Button, Center, Text, VStack } from "@chakra-ui/react";
 import { useLocalStorageState } from "ahooks";
-import { randomString } from "@/lib/random";
-import { ActionPrefix, Card, LocalPlayerInfo, ServerState } from "@/types";
-import CollectionArea from "@/components/CollectionArea";
-import PlayerInfo from "@/components/PlayerInfo";
-import HandArea from "@/components/HandArea";
+import { ActionPrefix, LocalPlayerInfo, ServerState } from "@/types";
 import PlayerArea from "@/components/PlayerArea";
 import CardDeck from "@/components/CardDeck";
 import PublicArea from "@/components/PublicArea";
 import { calculateDisplayPlayerIndices } from "@/lib/game-helper";
-
-// const ALL_CARDS = Array.from({ length: 9 }, (_, index) => index + 1);
-const ALL_GAME_CARDS = [
-  "1-a",
-  "1-b",
-  "1-c",
-  "2-a",
-  "2-b",
-  "2-c",
-  // "3-a",
-  // "3-b",
-  // "3-c",
-];
+import { useGameToast } from "@/lib/use-game-toast";
 
 export default function GameMain({
   serverState,
@@ -57,15 +18,28 @@ export default function GameMain({
   act: (action: ActionPrefix, data?: any) => void;
 }) {
   // const { width, height } = useWindowSize();
+  let { toastError, toastInfo, toastOk } = useGameToast();
 
   const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
-
-  // const toast = useToast();
-
   const displayPlayerIndices = calculateDisplayPlayerIndices(
     playerInfo?.id,
     serverState.players,
   );
+  const myPlayer = serverState.players.find((p) => p.id === playerInfo?.id);
+
+  // const toast = useToast();
+
+  useEffect(() => {
+    if (myPlayer?.isPlaying) {
+      toastOk("我的回合");
+    }
+  }, [myPlayer?.isPlaying]);
+
+  useEffect(() => {
+    if (serverState?.gameStage === "stage:game-over") {
+      toastOk("游戏结束");
+    }
+  }, [serverState?.gameStage]);
 
   return (
     <Center
@@ -84,13 +58,6 @@ export default function GameMain({
           // isDisabled={gameStage !== "seat"}
         >
           开始游戏
-        </Button>
-        <Button
-          colorScheme="blue"
-          onClick={() => act("action:restart-game")}
-          // isDisabled={gameStage !== "seat"}
-        >
-          重新开始
         </Button>
       </VStack>
 

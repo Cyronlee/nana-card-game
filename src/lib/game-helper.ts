@@ -19,6 +19,23 @@ export const isTurnOver = (serverState: ServerState): boolean => {
   return revealedCards.length >= 3;
 };
 
+export const isGameOver = (serverState: ServerState): boolean => {
+  return serverState.players.some((p) => isPlayerWin(p));
+};
+
+export const isPlayerWin = (player: Player) => {
+  if (!player.collection || player.collection.length === 0) {
+    return false;
+  }
+  if (player.collection.length === 9) {
+    return true;
+  }
+  if (player.collection.some((c) => c.number === 7)) {
+    return true;
+  }
+  // TODO when two card sum = 7, then return true
+};
+
 export function challengeFailed(cards: Card[]): boolean {
   if (cards.length <= 1) return false;
   if (cards.length === 2) return cards[0].number !== cards[1].number;

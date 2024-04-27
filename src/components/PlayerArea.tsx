@@ -13,7 +13,7 @@ const PlayerArea = ({
   act,
 }: {
   sx?: SystemStyleObject;
-  isMe: boolean;
+  isMe?: boolean;
   player: Player | undefined;
   act: (action: ActionPrefix, data?: any) => void;
 }) => {
