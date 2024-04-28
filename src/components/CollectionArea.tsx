@@ -20,7 +20,7 @@ const CollectionArea = ({ cards }: { cards: Card[] }) => {
     <HStack
       sx={{
         // border: "1px solid white",
-        width: "150px",
+        width: "220px",
         height: "-webkit-fill-available",
       }}
     >

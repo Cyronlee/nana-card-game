@@ -56,9 +56,9 @@ const PokerCard = ({
   const [rotateYaxis, setRotateYaxis] = useState(0);
   const ref = useRef(null);
 
-  const handleMouseMove = (event) => {
-    const element = ref.current;
-    const elementRect = element.getBoundingClientRect();
+  const handleMouseMove = (event: any) => {
+    const element = ref.current as any;
+    const elementRect = element?.getBoundingClientRect();
     const elementWidth = elementRect.width;
     const elementHeight = elementRect.height;
     const elementCenterX = elementWidth / 2;

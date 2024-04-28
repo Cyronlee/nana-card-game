@@ -17,7 +17,7 @@ export interface Player {
   name: string;
   seat: number;
   isHost?: boolean;
-  isWon?: boolean;
+  isWinner?: boolean;
   isPlaying?: boolean;
   hand: Card[];
   collection: Card[];

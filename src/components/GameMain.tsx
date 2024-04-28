@@ -17,6 +17,8 @@ import CardDeck from "@/components/CardDeck";
 import PublicArea from "@/components/PublicArea";
 import { calculateDisplayPlayerIndices } from "@/lib/game-helper";
 import { useGameToast } from "@/lib/use-game-toast";
+import Confetti from "react-confetti";
+import { useWindowSize } from "react-use";
 
 export default function GameMain({
   serverState,
@@ -25,7 +27,7 @@ export default function GameMain({
   serverState: ServerState;
   act: (action: ActionPrefix, data?: any) => void;
 }) {
-  // const { width, height } = useWindowSize();
+  const { width, height } = useWindowSize();
   let { toastError, toastInfo, toastOk } = useGameToast();
 
   const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
@@ -145,6 +147,14 @@ export default function GameMain({
           {serverState.timestamp}
         </Text>
       </Box>
+
+      <Confetti
+        width={width}
+        height={height}
+        recycle={false}
+        run={serverState?.gameStage === "stage:game-over"}
+        // onConfettiComplete={() => setRoundStage("")}
+      />
     </Center>
   );
 }

@@ -6,11 +6,13 @@ import {
   challengeSuccess,
   concealAllCards,
   findUnrevealedCardId,
+  findWinner,
   getCurrentAndNextPlayer,
   isTurnOver,
   removeTargetCards,
+  sortByIdAsc,
 } from "@/lib/game-helper";
-import { Action, Card, ServerState } from "@/types";
+import { Action, Card, Player, ServerState } from "@/types";
 import { ALL_CARDS, GAME_RULES } from "@/lib/rules";
 
 export async function POST(request: Request) {
@@ -38,6 +40,7 @@ export async function POST(request: Request) {
               isPlaying: false,
               hand: [],
               collection: [],
+              isWinner: false,
             },
           ],
           cardDeck: ALL_CARDS,
@@ -52,14 +55,11 @@ export async function POST(request: Request) {
     const playerNumber = serverState.players.length;
 
     if (action.action === "action:join") {
-      if (serverState.gameStage !== "stage:lobby") {
-        throw new Error("can not join, game is already start");
+      if (playerNumber >= 6) {
+        throw new Error("the room is full");
       }
-      if (
-        playerNumber >= 6 &&
-        serverState.players.some((p) => p.id === action.playerId)
-      ) {
-        throw new Error("only support 2 players now");
+      if (serverState.players.some((p) => p.id === action.playerId)) {
+        throw new Error("you are already in the room");
       }
       serverState.players.push({
         id: action.playerId,
@@ -80,6 +80,7 @@ export async function POST(request: Request) {
         throw new Error("requires two or more players");
       }
       const gameRule = GAME_RULES[playerNumber];
+      console.log(gameRule);
 
       let shuffled: Card[] = shuffle([...gameRule.cards]);
 
@@ -89,9 +90,7 @@ export async function POST(request: Request) {
         cardDeck: [],
         players: serverState.players.map((p, i) => ({
           ...p,
-          hand: shuffled
-            .splice(0, gameRule.handNumber)
-            .sort((a, b) => a.number - b.number),
+          hand: shuffled.splice(0, gameRule.handNumber).sort(sortByIdAsc),
           collection: [],
           isPlaying: i === 0,
         })),
@@ -107,7 +106,7 @@ export async function POST(request: Request) {
         throw new Error("not your turn now");
       }
       if (serverState.gameSubStage === "sub:settling") {
-        throw new Error("this round is over, please waiting the settlement");
+        throw new Error("this round is over, please wait for the settlement");
       }
       Object.assign<ServerState, Partial<ServerState>>(serverState, {
         publicCards: serverState.publicCards?.map((c) => ({
@@ -128,26 +127,6 @@ export async function POST(request: Request) {
         // }, 100);
       }
     }
-
-    // if (action.action === "action:reveal-player-card") {
-    //   if (currentPlayer.id !== action.playerId) {
-    //     throw new Error("not your turn now");
-    //   }
-    //   let playerIndex = serverState.players.findIndex(
-    //     (p) => p.id === action.data.playerId,
-    //   );
-    //   const cardIndex = serverState.players[playerIndex].hand?.findIndex(
-    //     (c) => c.id === action.data.cardId,
-    //   );
-    //   serverState.players[playerIndex].hand[cardIndex].isRevealed = true;
-    //
-    //   if (isTurnOver(serverState)) {
-    //     Object.assign<ServerState, Partial<ServerState>>(serverState, {
-    //       gameSubStage: "sub:settling",
-    //       timestamp: Date.now(),
-    //     });
-    //   }
-    // }
 
     if (action.action === "action:reveal-player-card") {
       if (serverState.gameStage === "stage:game-over") {
@@ -200,14 +179,19 @@ export async function replaceState(gameId: string, serverState: ServerState) {
   await kv.set<ServerState>(`game:${gameId}`, serverState);
 }
 
-export const markGameOver = async (
+export const setGameOver = async (
   gameId: string,
   serverState: ServerState,
+  winnerId: string,
 ) => {
   Object.assign<ServerState, Partial<ServerState>>(serverState, {
     gameStage: "stage:game-over",
     gameSubStage: null,
     timestamp: Date.now(),
+  });
+  serverState.players.forEach((p) => {
+    p.isPlaying = false;
+    if (winnerId === p.id) p.isWinner = true;
   });
 
   await replaceState(gameId, serverState);

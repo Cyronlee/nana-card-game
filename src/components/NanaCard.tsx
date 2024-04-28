@@ -132,14 +132,16 @@ const NanaCard = ({
       layoutId={cardId}
       onClick={() => onClick(cardId)}
       transition={spring}
-      style={{
-        perspective: "1200px",
-        transformStyle: "preserve-3d",
-        width: w,
-        height: h,
-        cursor: "pointer",
-        ...sx,
-      }}
+      style={
+        {
+          perspective: "1200px",
+          transformStyle: "preserve-3d",
+          width: w,
+          height: h,
+          cursor: "pointer",
+          ...sx,
+        } as any
+      }
     >
       <motion.div
         ref={ref}

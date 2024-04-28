@@ -1,4 +1,5 @@
 import { Card, Player, ServerState } from "@/types";
+import { sum7Pairs } from "@/lib/rules";
 
 export const allRevealedCards = (serverState: ServerState) => {
   const revealedCards: Card[] = [];
@@ -19,8 +20,8 @@ export const isTurnOver = (serverState: ServerState): boolean => {
   return revealedCards.length >= 3;
 };
 
-export const isGameOver = (serverState: ServerState): boolean => {
-  return serverState.players.some((p) => isPlayerWin(p));
+export const findWinner = (serverState: ServerState): Player | undefined => {
+  return serverState.players.find((p) => isPlayerWin(p));
 };
 
 export const isPlayerWin = (player: Player) => {
@@ -33,7 +34,12 @@ export const isPlayerWin = (player: Player) => {
   if (player.collection.some((c) => c.number === 7)) {
     return true;
   }
-  // TODO when two card sum = 7, then return true
+  if (player.collection.length === 6) {
+    const collectNumbers = player.collection.map((c) => c.number);
+    return sum7Pairs.some((pair) =>
+      pair.every((n) => collectNumbers.includes(n)),
+    );
+  }
 };
 
 export function challengeFailed(cards: Card[]): boolean {
@@ -60,28 +66,10 @@ export function findUnrevealedCardId(
   if (!cards) return undefined;
   const sortedCards = [...cards].filter((c) => !c.isRevealed);
   if (minMax === "min") {
-    sortedCards.sort((a, b) => a.number - b.number);
+    sortedCards.sort(sortByIdAsc);
   } else {
-    sortedCards.sort((a, b) => b.number - a.number);
+    sortedCards.sort(sortByIdDesc);
   }
-  return sortedCards.find((c) => !c.isRevealed)?.id;
-}
-
-export function findMinUnrevealedCardId(
-  cards: Card[] | undefined,
-): string | undefined {
-  if (!cards) return undefined;
-  const sortedCards = [...cards];
-  sortedCards.filter((c) => !c.isRevealed).sort((a, b) => a.number - b.number);
-  return sortedCards.find((c) => !c.isRevealed)?.id;
-}
-
-export function findMaxUnrevealedCardId(
-  cards: Card[] | undefined,
-): string | undefined {
-  if (!cards) return undefined;
-  const sortedCards = [...cards];
-  sortedCards.filter((c) => !c.isRevealed).sort((a, b) => b.number - a.number);
   return sortedCards.find((c) => !c.isRevealed)?.id;
 }
 
@@ -117,8 +105,11 @@ export const removeTargetCards = (
   serverState.players.forEach(
     (p) => (p.hand = p.hand?.filter((c) => c.number !== targetCardNumber)),
   );
-  serverState.publicCards = serverState.publicCards?.filter(
-    (c) => c.number !== targetCardNumber,
+  // serverState.publicCards = serverState.publicCards?.filter(
+  //   (c) => c.number !== targetCardNumber,
+  // );
+  serverState.publicCards = serverState.publicCards?.map((c) =>
+    c.number === targetCardNumber ? { id: undefined } : c,
   );
 };
 
@@ -142,3 +133,13 @@ export const calculateDisplayPlayerIndices = (
 
   return originIndex.splice(myIndex, players.length);
 };
+
+export const sortByIdAsc = (a: Card, b: Card) =>
+  a.id.localeCompare(b.id, undefined, {
+    numeric: true,
+  });
+
+export const sortByIdDesc = (a: Card, b: Card) =>
+  b.id.localeCompare(a.id, undefined, {
+    numeric: true,
+  });
