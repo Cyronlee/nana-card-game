@@ -191,7 +191,7 @@ const NanaCard = ({
           </motion.div>
         </div>
       </motion.div>
-      <span style={{ position: "absolute", bottom: 0 }}>{cardId}</span>
+      {/*<span style={{ position: "absolute", bottom: 0 }}>{cardId}</span>*/}
     </motion.div>
   );
 };

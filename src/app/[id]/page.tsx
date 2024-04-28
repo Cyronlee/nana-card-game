@@ -5,8 +5,10 @@ import { useLocalStorageState, useRequest } from "ahooks";
 import { kv } from "@vercel/kv";
 import GameMain from "@/components/GameMain";
 import { ActionPrefix, LocalPlayerInfo, ServerState } from "@/types";
+import { useRouter } from "next/navigation";
 
 const GameRoomPage = ({ params }: { params: { id: string } }) => {
+  const router = useRouter();
   const toast = useToast();
 
   const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
@@ -18,6 +20,10 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
         cache: "no-cache",
       },
     );
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error);
+    }
     return res.json();
   };
 
@@ -27,6 +33,17 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
     mutate: mutateServerState,
   } = useRequest(gameStateFetcher, {
     pollingInterval: 2000,
+    onError: (error) => {
+      toast({
+        title: "房间读取失败",
+        description: error.message,
+        status: "error",
+        duration: 6000,
+        isClosable: true,
+        position: "top-right",
+      });
+      router.push("/");
+    },
   });
 
   const actionExecutor = async (

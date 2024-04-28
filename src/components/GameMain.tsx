@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { Button, Center, Text, VStack } from "@chakra-ui/react";
+import {
+  Button,
+  Center,
+  Text,
+  VStack,
+  Box,
+  HStack,
+  Tag,
+} from "@chakra-ui/react";
 import { useLocalStorageState } from "ahooks";
 import { ActionPrefix, LocalPlayerInfo, ServerState } from "@/types";
 import PlayerArea from "@/components/PlayerArea";
@@ -52,6 +60,20 @@ export default function GameMain({
       justifyContent="space-evenly"
     >
       <VStack sx={{ position: "fixed", top: "16px", right: "16px" }}>
+        <HStack>
+          <Text color="white">游戏ID:</Text>
+          <Tag
+            colorScheme="gray"
+            cursor="pointer"
+            onClick={() => {
+              const joinUrl = `${window.location.origin}?join=${serverState.gameId}`;
+              navigator.clipboard.writeText(joinUrl);
+              toastInfo("邀请链接已拷贝到剪贴板");
+            }}
+          >
+            {serverState.gameId}
+          </Tag>
+        </HStack>
         <Button
           colorScheme="blue"
           onClick={() => act("action:start-game")}
@@ -87,21 +109,10 @@ export default function GameMain({
           borderRadius="16px"
           justifyContent="center"
         >
-          <Text color="white">
-            游戏ID: {serverState.gameId} 服务器状态: {serverState.gameStage} -{" "}
-            {serverState.gameSubStage} - {serverState.timestamp}
-          </Text>
-          {/*<Text color="white">公共区</Text>*/}
+          <Text color="white">公共区</Text>
           {serverState?.cardDeck && serverState.cardDeck.length > 0 && (
             <VStack>
               <CardDeck cards={serverState.cardDeck}></CardDeck>
-              <Button
-                colorScheme="blue"
-                onClick={() => act("action:start-game")}
-                // isDisabled={gameStage !== "seat"}
-              >
-                开始游戏
-              </Button>
             </VStack>
           )}
 
@@ -127,6 +138,13 @@ export default function GameMain({
           act={act}
         ></PlayerArea>
       </VStack>
+
+      <Box sx={{ position: "fixed", bottom: 0, left: 0 }}>
+        <Text color="white">
+          服务器状态: {serverState.gameStage} - {serverState.gameSubStage} -{" "}
+          {serverState.timestamp}
+        </Text>
+      </Box>
     </Center>
   );
 }

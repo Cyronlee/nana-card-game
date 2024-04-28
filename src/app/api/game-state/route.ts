@@ -10,10 +10,20 @@ export async function GET(request: NextRequest) {
   const playerId = searchParams.get("playerId");
 
   if (gameId == null || playerId == null) {
-    return Response.json({ error: "no permission" }, { status: 400 });
+    return Response.json(
+      { error: "you are not in this game, please join from the home page" },
+      { status: 400 },
+    );
   }
 
   const serverState = await kv.get<ServerState>(`game:${gameId}`);
+
+  if (!serverState?.players.some((p) => p.id === playerId)) {
+    return Response.json(
+      { error: "you are not in this game, please join from the home page" },
+      { status: 400 },
+    );
+  }
 
   if (serverState?.gameSubStage === "sub:settling") {
     if (Date.now() - serverState.timestamp > 2000) {

@@ -15,15 +15,18 @@ import {
   VStack,
   useToast,
 } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { useLocalStorageState } from "ahooks";
 import { randomString } from "@/lib/random";
 // import { useLocalStorage } from "react-use";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LocalPlayerInfo } from "@/types";
 
 const GamePage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const joinParam = searchParams.get("join");
+
   const toast = useToast();
 
   const [playerInfo, setPlayerInfo] = useLocalStorageState<LocalPlayerInfo>(
@@ -37,6 +40,10 @@ const GamePage = () => {
   );
 
   const [joinRoomId, setJoinRoomId] = useState("");
+
+  useLayoutEffect(() => {
+    if (joinParam) setJoinRoomId(joinParam);
+  }, [joinParam]);
 
   const hostRoom = async () => {
     if (!playerInfo?.name) {
@@ -96,24 +103,26 @@ const GamePage = () => {
   };
 
   return (
-    <Center w="100vw" h="100vh">
-      <VStack>
-        <Text
-          bgGradient="linear(to-l, #7928CA, #FF0080)"
-          bgClip="text"
-          fontSize="6xl"
-          fontWeight="extrabold"
-        >
-          NANA Card Game
-        </Text>
-        <Text
-          bgGradient="linear(to-l, #7928CA, #FF0080)"
-          bgClip="text"
-          fontSize="lg"
-          fontWeight="extrabold"
-        >
-          2 ~ 6 Players Online
-        </Text>
+    <Center w="100vw" h="100vh" bgColor="gray.700">
+      <VStack gap="12px">
+        <VStack>
+          <Text
+            bgGradient="linear(to-r, gray.300, yellow.400, pink.200)"
+            bgClip="text"
+            fontSize="6xl"
+            fontWeight="extrabold"
+          >
+            NANA Card Game
+          </Text>
+          <Text
+            bgGradient="linear(to-r, gray.300, yellow.400, pink.200)"
+            bgClip="text"
+            fontSize="lg"
+            fontWeight="extrabold"
+          >
+            2 ~ 6 Players Online
+          </Text>
+        </VStack>
         <Card w="sm">
           <CardBody>
             <VStack spacing="24px" alignItems="start">
@@ -157,6 +166,7 @@ const GamePage = () => {
                 <InputLeftAddon>Game ID</InputLeftAddon>
                 <Input
                   placeholder="Game ID"
+                  value={joinRoomId}
                   onChange={(e) => setJoinRoomId(e.target.value)}
                 />
               </InputGroup>
