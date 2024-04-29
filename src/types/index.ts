@@ -10,6 +10,7 @@ export interface ServerState {
   players: Player[];
   cardDeck?: Card[];
   publicCards?: Card[];
+  messages: Message[];
 }
 
 export interface Player {
@@ -39,4 +40,10 @@ export interface Action {
 export interface LocalPlayerInfo {
   id: string;
   name: string;
+}
+
+export interface Message {
+  playerName: string;
+  timestamp: number;
+  content: string;
 }

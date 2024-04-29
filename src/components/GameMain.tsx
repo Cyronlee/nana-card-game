@@ -11,7 +11,7 @@ import {
   Tag,
 } from "@chakra-ui/react";
 import { useLocalStorageState } from "ahooks";
-import { ActionPrefix, LocalPlayerInfo, ServerState } from "@/types";
+import { ActionPrefix, LocalPlayerInfo, Message, ServerState } from "@/types";
 import PlayerArea from "@/components/PlayerArea";
 import CardDeck from "@/components/CardDeck";
 import PublicArea from "@/components/PublicArea";
@@ -19,6 +19,7 @@ import { calculateDisplayPlayerIndices } from "@/lib/game-helper";
 import { useGameToast } from "@/lib/use-game-toast";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
+import ChatArea from "@/components/ChatArea";
 
 export default function GameMain({
   serverState,
@@ -141,11 +142,12 @@ export default function GameMain({
         ></PlayerArea>
       </VStack>
 
-      <Box sx={{ position: "fixed", bottom: 0, left: 0 }}>
-        <Text color="white">
-          服务器状态: {serverState.gameStage} - {serverState.gameSubStage} -{" "}
-          {serverState.timestamp}
-        </Text>
+      <Box sx={{ position: "fixed", bottom: 2, left: 2 }}>
+        {/*<Text color="white">*/}
+        {/*  服务器状态: {serverState.gameStage} - {serverState.gameSubStage} -{" "}*/}
+        {/*  {serverState.timestamp}*/}
+        {/*</Text>*/}
+        <ChatArea messages={serverState.messages} act={act}></ChatArea>
       </Box>
 
       <Confetti

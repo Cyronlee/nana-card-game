@@ -6,7 +6,6 @@ import {
   challengeSuccess,
   concealAllCards,
   findUnrevealedCardId,
-  findWinner,
   getCurrentAndNextPlayer,
   isTurnOver,
   removeTargetCards,
@@ -45,6 +44,7 @@ export async function POST(request: Request) {
           ],
           cardDeck: ALL_CARDS,
           publicCards: [],
+          messages: [],
         },
         { ex: 60 * 60 },
       );
@@ -157,6 +157,15 @@ export async function POST(request: Request) {
           timestamp: Date.now(),
         });
       }
+    }
+
+    if (action.action === "action:chat") {
+      const me = serverState.players.find((p) => p.id === action.playerId);
+      serverState.messages.unshift({
+        playerName: me?.name,
+        content: action.data.message,
+        timestamp: Date.now(),
+      });
     }
 
     await replaceState(action.gameId, serverState);
