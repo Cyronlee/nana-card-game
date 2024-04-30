@@ -74,7 +74,7 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
       mutateServerState(result);
       toast({
         title: `操作成功`,
-        description: `${JSON.stringify(params)}`,
+        // description: `${JSON.stringify(params)}`,
         status: "success",
         duration: 2000,
         isClosable: true,

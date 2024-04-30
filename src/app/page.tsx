@@ -13,12 +13,13 @@ import {
   InputGroup,
   InputLeftAddon,
   VStack,
+  IconButton,
   useToast,
 } from "@chakra-ui/react";
 import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { useLocalStorageState } from "ahooks";
 import { randomString } from "@/lib/random";
-// import { useLocalStorage } from "react-use";
+import { BsGithub } from "react-icons/bs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LocalPlayerInfo } from "@/types";
 
@@ -112,7 +113,19 @@ const GamePage = () => {
             fontSize="6xl"
             fontWeight="extrabold"
           >
-            NANA Card Game
+            NANA Card Game{" "}
+            <IconButton
+              variant="outline"
+              color="white"
+              colorScheme="none"
+              aria-label="Mute"
+              size="sm"
+              fontSize="20px"
+              onClick={() =>
+                window.open("https://github.com/Cyronlee/nana-card-game")
+              }
+              icon={<BsGithub />}
+            />
           </Text>
           <Text
             bgGradient="linear(to-r, gray.300, yellow.400, pink.200)"
@@ -120,44 +133,46 @@ const GamePage = () => {
             fontSize="lg"
             fontWeight="extrabold"
           >
-            2 ~ 6 Players Online
+            2 ~ 6 Players Online{" "}
           </Text>
         </VStack>
-        <Card w="sm">
-          <CardBody>
-            <VStack spacing="24px" alignItems="start">
-              <Heading size="md">Create Game</Heading>
-              {/*<Heading size="md">*/}
-              {/*  {playerInfo.id} {playerInfo.name}*/}
-              {/*</Heading>*/}
-              <InputGroup>
-                <InputLeftAddon>Your Name</InputLeftAddon>
-                <Input
-                  value={playerInfo?.name}
-                  onChange={(e) =>
-                    // @ts-ignore
-                    setPlayerInfo((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  placeholder="Your Name"
-                />
-              </InputGroup>
-            </VStack>
-          </CardBody>
-          <Divider sx={{ borderColor: "gray.300" }} />
-          <CardFooter justifyContent="flex-end">
-            <Button
-              size="sm"
-              variant="solid"
-              colorScheme="blue"
-              onClick={() => hostRoom()}
-            >
-              Create
-            </Button>
-          </CardFooter>
-        </Card>
+        {!joinParam && (
+          <Card w="sm">
+            <CardBody>
+              <VStack spacing="24px" alignItems="start">
+                <Heading size="md">Create Game</Heading>
+                {/*<Heading size="md">*/}
+                {/*  {playerInfo.id} {playerInfo.name}*/}
+                {/*</Heading>*/}
+                <InputGroup>
+                  <InputLeftAddon>Your Name</InputLeftAddon>
+                  <Input
+                    value={playerInfo?.name}
+                    onChange={(e) =>
+                      // @ts-ignore
+                      setPlayerInfo((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    placeholder="Your Name"
+                  />
+                </InputGroup>
+              </VStack>
+            </CardBody>
+            <Divider sx={{ borderColor: "gray.300" }} />
+            <CardFooter justifyContent="flex-end">
+              <Button
+                size="sm"
+                variant="solid"
+                colorScheme="blue"
+                onClick={() => hostRoom()}
+              >
+                Create
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
         <Card w="sm">
           <CardBody>
             <VStack spacing="24px" alignItems="start">

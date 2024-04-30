@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Button,
   Center,
@@ -22,6 +22,7 @@ import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
 import ChatArea from "@/components/ChatArea";
 import { RiFullscreenFill } from "react-icons/ri";
+import BigToast from "@/components/BigToast";
 
 export default function GameMain({
   serverState,
@@ -31,6 +32,7 @@ export default function GameMain({
   act: (action: ActionPrefix, data?: any) => void;
 }) {
   const { width, height } = useWindowSize();
+  const [bigToastMessage, setBigToastMessage] = useState<string | undefined>();
   let { toastError, toastInfo, toastOk } = useGameToast();
 
   const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
@@ -40,17 +42,20 @@ export default function GameMain({
   );
   const myPlayer = serverState.players.find((p) => p.id === playerInfo?.id);
 
-  // const toast = useToast();
-
   useEffect(() => {
     if (myPlayer?.isPlaying) {
-      toastOk("我的回合");
+      setBigToastMessage("我的回合");
+    } else {
+      setBigToastMessage(undefined);
     }
   }, [myPlayer?.isPlaying]);
 
   useEffect(() => {
     if (serverState?.gameStage === "stage:game-over") {
-      toastOk("游戏结束");
+      setBigToastMessage("游戏结束");
+    }
+    if (serverState?.gameStage === "stage:in-game") {
+      setBigToastMessage("游戏开始");
     }
   }, [serverState?.gameStage]);
 
@@ -159,6 +164,8 @@ export default function GameMain({
         run={serverState?.gameStage === "stage:game-over"}
         // onConfettiComplete={() => setRoundStage("")}
       />
+
+      <BigToast message={bigToastMessage}></BigToast>
     </Center>
   );
 }

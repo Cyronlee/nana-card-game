@@ -2,16 +2,17 @@ import React from "react";
 import NanaCard from "@/components/NanaCard";
 import { Box, HStack } from "@chakra-ui/react";
 import { Card } from "@/types";
+import { useGameToast } from "@/lib/use-game-toast";
 
 const HandArea = ({
   isMe = false,
   cards,
-  onCardClick,
 }: {
   isMe: boolean;
   cards: Card[] | undefined;
-  onCardClick: (cardId: string) => void;
 }) => {
+  let { toastError, toastInfo, toastOk } = useGameToast();
+
   return (
     <HStack h="136px" w="-webkit-fill-available" padding="8px">
       {cards?.map((card) => (
@@ -30,13 +31,7 @@ const HandArea = ({
               position: "absolute",
               top: isMe && card.isRevealed ? "-32px" : "0",
             }}
-            // onClick={(cardId) =>
-            //   act("action:reveal-player-card", {
-            //     playerId: player1.id,
-            //     cardId: card.id,
-            //   })
-            // }
-            onClick={() => onCardClick(card.id)}
+            onClick={() => toastInfo("只可以选择玩家的最大/最小手牌")}
             cardId={card.id}
             isRevealed={isMe ? true : card.isRevealed}
             w="90px"

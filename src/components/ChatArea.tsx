@@ -53,7 +53,7 @@ const ChatArea = ({
   return (
     <motion.div initial={{ y: 24 }} ref={animateRef}>
       <Box
-        w="20vw"
+        w="320px"
         padding="4px"
         border="1px solid white"
         borderRadius="8px"

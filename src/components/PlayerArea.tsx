@@ -64,7 +64,12 @@ const PlayerArea = ({
           <Button
             colorScheme="gray"
             size="sm"
-            sx={{ textWrap: "wrap", width: "32px", height: "90px" }}
+            sx={{
+              textWrap: "wrap",
+              width: "32px",
+              height: "90px",
+              writingMode: "vertical-rl",
+            }}
             onClick={() =>
               act("action:reveal-player-card", {
                 targetPlayerId: player?.id,
@@ -74,15 +79,16 @@ const PlayerArea = ({
           >
             选最小
           </Button>
-          <HandArea
-            isMe={isMe}
-            cards={player.hand}
-            onCardClick={() => {}}
-          ></HandArea>
+          <HandArea isMe={isMe} cards={player.hand}></HandArea>
           <Button
             colorScheme="gray"
             size="sm"
-            sx={{ textWrap: "wrap", width: "32px", height: "90px" }}
+            sx={{
+              textWrap: "wrap",
+              width: "32px",
+              height: "90px",
+              writingMode: "vertical-rl",
+            }}
             onClick={() =>
               act("action:reveal-player-card", {
                 targetPlayerId: player?.id,
