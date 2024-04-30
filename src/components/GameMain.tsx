@@ -9,6 +9,7 @@ import {
   Box,
   HStack,
   Tag,
+  Icon,
 } from "@chakra-ui/react";
 import { useLocalStorageState } from "ahooks";
 import { ActionPrefix, LocalPlayerInfo, Message, ServerState } from "@/types";
@@ -20,6 +21,7 @@ import { useGameToast } from "@/lib/use-game-toast";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
 import ChatArea from "@/components/ChatArea";
+import { RiFullscreenFill } from "react-icons/ri";
 
 export default function GameMain({
   serverState,

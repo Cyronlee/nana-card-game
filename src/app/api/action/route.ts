@@ -93,6 +93,7 @@ export async function POST(request: Request) {
           hand: shuffled.splice(0, gameRule.handNumber).sort(sortByIdAsc),
           collection: [],
           isPlaying: i === 0,
+          isWinner: false,
         })),
         publicCards: shuffled,
       });

@@ -1,11 +1,12 @@
 "use client";
-import { Button, useToast } from "@chakra-ui/react";
+import { Button, useToast, Box, Icon } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
 import { useLocalStorageState, useRequest } from "ahooks";
 import { kv } from "@vercel/kv";
 import GameMain from "@/components/GameMain";
 import { ActionPrefix, LocalPlayerInfo, ServerState } from "@/types";
 import { useRouter } from "next/navigation";
+import { RiFullscreenFill } from "react-icons/ri";
 
 const GameRoomPage = ({ params }: { params: { id: string } }) => {
   const router = useRouter();
@@ -92,7 +93,27 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
     },
   });
 
-  return <>{serverState && <GameMain serverState={serverState} act={act} />}</>;
+  return (
+    <>
+      {serverState && <GameMain serverState={serverState} act={act} />}
+
+      <Box sx={{ position: "fixed", top: "16px", left: "16px" }}>
+        <Button
+          size="sm"
+          colorScheme="gray"
+          onClick={() => {
+            if (document.fullscreenElement) {
+              document.exitFullscreen();
+            } else {
+              document.body.requestFullscreen();
+            }
+          }}
+        >
+          <Icon as={RiFullscreenFill}></Icon>
+        </Button>
+      </Box>
+    </>
+  );
 };
 
 export default GameRoomPage;
