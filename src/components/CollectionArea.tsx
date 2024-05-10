@@ -1,18 +1,12 @@
+"use client";
+
 import { Card } from "@/types";
 import { Box, HStack, Text } from "@chakra-ui/react";
 import { motion } from "framer-motion";
 import NanaCard from "@/components/NanaCard";
 import React, { useEffect } from "react";
-import { useGameSound } from "@/lib/use-game-sound";
 
 const CollectionArea = ({ cards }: { cards: Card[] }) => {
-  const { playWoosh } = useGameSound();
-  useEffect(() => {
-    if (cards.length > 0) {
-      playWoosh();
-    }
-  }, [cards.length]);
-
   const groupedCards = cards.reduce(
     (acc, card) => {
       if (!acc[card.number]) {

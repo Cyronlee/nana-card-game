@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { RiFullscreenFill } from "react-icons/ri";
 import { IconButton } from "@chakra-ui/react";

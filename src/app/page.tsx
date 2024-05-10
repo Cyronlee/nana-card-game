@@ -73,6 +73,16 @@ const GamePage = () => {
     });
     if (res.ok) {
       router.push(`/${newGameId}`);
+    } else {
+      toast({
+        title: `服务器错误`,
+        description:
+          "Vercel KV max daily request limit exceeded. Limit: 10000, Usage: 10000.",
+        status: "error",
+        duration: 2000,
+        isClosable: true,
+        position: "top",
+      });
     }
   };
 
@@ -101,6 +111,16 @@ const GamePage = () => {
     });
     if (res.ok) {
       router.push(`/${joinRoomId}`);
+    } else {
+      toast({
+        title: `服务器错误`,
+        description:
+          "Vercel KV max daily request limit exceeded. Limit: 10000, Usage: 10000.",
+        status: "error",
+        duration: 2000,
+        isClosable: true,
+        position: "top",
+      });
     }
   };
 
@@ -169,7 +189,7 @@ const GamePage = () => {
                 colorScheme="blue"
                 onClick={() => hostRoom()}
               >
-                Create
+                Create Game
               </Button>
             </CardFooter>
           </Card>
@@ -210,7 +230,7 @@ const GamePage = () => {
               colorScheme="blue"
               onClick={() => joinRoom()}
             >
-              Join
+              Join Game Room
             </Button>
           </CardFooter>
         </Card>

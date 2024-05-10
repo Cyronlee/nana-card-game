@@ -23,7 +23,7 @@ import { useWindowSize } from "react-use";
 import ChatArea from "@/components/ChatArea";
 import { RiFullscreenFill } from "react-icons/ri";
 import BigToast from "@/components/BigToast";
-import { useGameSound, useGameSounds } from "@/lib/use-game-sound";
+import { useGameSound } from "@/lib/use-game-sound";
 
 export default function GameMain({
   serverState,
@@ -34,11 +34,11 @@ export default function GameMain({
 }) {
   const { width, height } = useWindowSize();
   const [bigToastMessage, setBigToastMessage] = useState<string | undefined>();
+
+  const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
   let { toastError, toastInfo, toastOk } = useGameToast();
   let { playWoosh, playWin, playSwing, playFlip, playSuccess, playDingDong } =
     useGameSound();
-
-  const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
   const displayPlayerIndices = calculateDisplayPlayerIndices(
     playerInfo?.id,
     serverState.players,

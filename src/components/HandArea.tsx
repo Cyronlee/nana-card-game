@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import NanaCard from "@/components/NanaCard";
 import { Box, HStack } from "@chakra-ui/react";

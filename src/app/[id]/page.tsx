@@ -8,7 +8,7 @@ import { ActionPrefix, LocalPlayerInfo, ServerState } from "@/types";
 import { useRouter } from "next/navigation";
 import GameRuleButton from "@/components/GameRuleButton";
 import FullScreenButton from "@/components/FullScreenButton";
-import SoundFXButton from "@/components/MuteButton";
+import VolumeButton from "@/components/VolumeButton";
 
 const GameRoomPage = ({ params }: { params: { id: string } }) => {
   const router = useRouter();
@@ -110,7 +110,7 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
         }}
       >
         <FullScreenButton />
-        <SoundFXButton />
+        <VolumeButton />
         <GameRuleButton />
       </Box>
     </>

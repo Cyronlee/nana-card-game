@@ -6,12 +6,12 @@ import { useLocalStorageState } from "ahooks";
 import { BiVolumeFull, BiVolumeMute } from "react-icons/bi";
 
 import { useGameSound } from "@/lib/use-game-sound";
+import { useGameContext } from "@/lib/game-context";
 
-const SoundFXButton = () => {
-  const [enableSound, setEnableSound] =
-    useLocalStorageState<boolean>("enable-sound");
+const VolumeButton = () => {
+  const { gameState, setGameState } = useGameContext();
 
-  let { playWoosh } = useGameSound();
+  let { playWoosh, playToggle } = useGameSound();
 
   return (
     <IconButton
@@ -22,14 +22,14 @@ const SoundFXButton = () => {
       size="sm"
       fontSize="20px"
       onClick={() => {
-        if (!enableSound) {
-          playWoosh();
+        setGameState({ soundEnabled: !gameState.soundEnabled });
+        if (!gameState.soundEnabled) {
+          playToggle();
         }
-        setEnableSound(!enableSound);
       }}
-      icon={enableSound ? <BiVolumeFull /> : <BiVolumeMute />}
+      icon={gameState.soundEnabled ? <BiVolumeFull /> : <BiVolumeMute />}
     />
   );
 };
 
-export default SoundFXButton;
+export default VolumeButton;

@@ -1,10 +1,13 @@
-import React from "react";
+"use client";
+
+import React, { useEffect } from "react";
 import { Box, VStack, HStack, Button, Center, Text } from "@chakra-ui/react";
 import { SystemStyleObject } from "@chakra-ui/styled-system";
 import PlayerInfo from "@/components/PlayerInfo";
 import HandArea from "@/components/HandArea";
 import CollectionArea from "@/components/CollectionArea";
 import { ActionPrefix, Player } from "@/types";
+import { useGameSound } from "@/lib/use-game-sound";
 
 const PlayerArea = ({
   sx,
@@ -17,6 +20,18 @@ const PlayerArea = ({
   player: Player | undefined;
   act: (action: ActionPrefix, data?: any) => void;
 }) => {
+  const { playWoosh, playSuccess } = useGameSound();
+  const revealedCount = player?.hand.filter((card) => card.isRevealed).length;
+  const collectionCount = player?.collection?.length;
+
+  useEffect(() => {
+    revealedCount && revealedCount > 0 && playWoosh();
+  }, [revealedCount]);
+
+  useEffect(() => {
+    collectionCount && collectionCount > 0 && playSuccess();
+  }, [collectionCount]);
+
   if (!player) {
     return (
       <Center
