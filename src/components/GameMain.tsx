@@ -23,6 +23,7 @@ import { useWindowSize } from "react-use";
 import ChatArea from "@/components/ChatArea";
 import { RiFullscreenFill } from "react-icons/ri";
 import BigToast from "@/components/BigToast";
+import { useGameSound, useGameSounds } from "@/lib/use-game-sound";
 
 export default function GameMain({
   serverState,
@@ -34,6 +35,8 @@ export default function GameMain({
   const { width, height } = useWindowSize();
   const [bigToastMessage, setBigToastMessage] = useState<string | undefined>();
   let { toastError, toastInfo, toastOk } = useGameToast();
+  let { playWoosh, playWin, playSwing, playFlip, playSuccess, playDingDong } =
+    useGameSound();
 
   const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
   const displayPlayerIndices = calculateDisplayPlayerIndices(
@@ -46,19 +49,22 @@ export default function GameMain({
 
   useEffect(() => {
     if (isMePlaying) {
+      playDingDong();
       setBigToastMessage("我的回合");
     } else if (playingPlayer) {
       setBigToastMessage(`${playingPlayer.name}开始行动`);
     } else {
       setBigToastMessage(undefined);
     }
-  }, [playingPlayer, isMePlaying]);
+  }, [playingPlayer?.id]);
 
   useEffect(() => {
     if (serverState?.gameStage === "stage:game-over") {
+      playWin();
       setBigToastMessage("游戏结束");
     }
     if (serverState?.gameStage === "stage:in-game") {
+      playWoosh();
       setBigToastMessage("游戏开始");
     }
   }, [serverState?.gameStage]);

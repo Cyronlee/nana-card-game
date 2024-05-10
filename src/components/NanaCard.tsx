@@ -6,6 +6,7 @@ import { Box } from "@chakra-ui/react";
 
 import Image from "next/image";
 import { SystemStyleObject } from "@chakra-ui/styled-system";
+import { useGameSound } from "@/lib/use-game-sound";
 
 const spring = {
   type: "spring",
@@ -81,18 +82,7 @@ const NanaCard = ({
   // onFlipToFront: any;
   // onFlipToBack: any;
 }) => {
-  // const [isFlipped, setIsFlipped] = useState(false);
-  //
-  // const handleClick = () => {
-  //   setIsFlipped((prevState) => {
-  //     if (prevState) {
-  //       onFlipToBack(cardId);
-  //     } else {
-  //       onFlipToFront(cardId);
-  //     }
-  //     return !prevState;
-  //   });
-  // };
+  let { playWoosh, playWin, playSwing, playFlip, playSuccess } = useGameSound();
 
   const [rotateXaxis, setRotateXaxis] = useState(0);
   const [rotateYaxis, setRotateYaxis] = useState(0);
@@ -126,6 +116,12 @@ const NanaCard = ({
     dx.set(-rotateXaxis);
     dy.set(rotateYaxis);
   }, [rotateXaxis, rotateYaxis]);
+
+  useEffect(() => {
+    if (isRevealed) {
+      playFlip();
+    }
+  }, [isRevealed]);
 
   return (
     <motion.div

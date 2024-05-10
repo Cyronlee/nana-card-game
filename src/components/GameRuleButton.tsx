@@ -64,9 +64,7 @@ const GameRuleButton = () => {
             </VStack>
           </ModalBody>
 
-          <ModalFooter>
-            <Button variant="ghost">OK</Button>
-          </ModalFooter>
+          <ModalFooter>{/*<Button variant="ghost">OK</Button>*/}</ModalFooter>
         </ModalContent>
       </Modal>
     </>
