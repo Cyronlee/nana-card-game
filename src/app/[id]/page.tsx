@@ -6,7 +6,8 @@ import { kv } from "@vercel/kv";
 import GameMain from "@/components/GameMain";
 import { ActionPrefix, LocalPlayerInfo, ServerState } from "@/types";
 import { useRouter } from "next/navigation";
-import { RiFullscreenFill } from "react-icons/ri";
+import GameRuleButton from "@/components/GameRuleButton";
+import FullScreenButton from "@/components/FullScreenButton";
 
 const GameRoomPage = ({ params }: { params: { id: string } }) => {
   const router = useRouter();
@@ -33,7 +34,7 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
     // refresh: refreshServerState,
     mutate: mutateServerState,
   } = useRequest(gameStateFetcher, {
-    pollingInterval: 2000,
+    pollingInterval: 1000,
     onError: (error) => {
       toast({
         title: "房间读取失败",
@@ -97,20 +98,18 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
     <>
       {serverState && <GameMain serverState={serverState} act={act} />}
 
-      <Box sx={{ position: "fixed", top: "16px", left: "16px" }}>
-        <Button
-          size="sm"
-          colorScheme="gray"
-          onClick={() => {
-            if (document.fullscreenElement) {
-              document.exitFullscreen();
-            } else {
-              document.body.requestFullscreen();
-            }
-          }}
-        >
-          <Icon as={RiFullscreenFill}></Icon>
-        </Button>
+      <Box
+        sx={{
+          position: "fixed",
+          top: "16px",
+          left: "16px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+        }}
+      >
+        <FullScreenButton />
+        <GameRuleButton />
       </Box>
     </>
   );

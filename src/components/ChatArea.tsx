@@ -93,6 +93,7 @@ const ChatArea = ({
             value={message}
             onChange={(e: any) => setMessage(e.target.value)}
             color="white"
+            placeholder="send message"
             onKeyDown={(e: any) => {
               if (e.key === "Enter") {
                 sendMessage();

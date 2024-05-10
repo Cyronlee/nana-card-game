@@ -22,6 +22,7 @@ import { randomString } from "@/lib/random";
 import { BsGithub } from "react-icons/bs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LocalPlayerInfo } from "@/types";
+import GameRuleButton from "@/components/GameRuleButton";
 
 const GamePage = () => {
   const router = useRouter();
@@ -34,7 +35,7 @@ const GamePage = () => {
     "player-info",
     {
       defaultValue: {
-        id: randomString(6),
+        id: randomString(4),
         name: "",
       },
     },
@@ -57,7 +58,7 @@ const GamePage = () => {
       });
       return;
     }
-    let newGameId = randomString(6);
+    let newGameId = randomString(4);
     const res = await fetch("/api/action", {
       method: "POST",
       body: JSON.stringify({
@@ -133,7 +134,7 @@ const GamePage = () => {
             fontSize="lg"
             fontWeight="extrabold"
           >
-            2 ~ 6 Players Online{" "}
+            2 ~ 6 Players Online <GameRuleButton />
           </Text>
         </VStack>
         {!joinParam && (

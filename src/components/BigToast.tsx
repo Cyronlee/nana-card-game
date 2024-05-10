@@ -21,6 +21,7 @@ const BigToast = ({ message }: { message: string | undefined }) => {
             top: "auto",
             left: "auto",
             cursor: "none",
+            width: "80%",
             // top: "50%",
             // left: "50%",
             // transform: "translate(-50%, -50%)",
@@ -30,7 +31,12 @@ const BigToast = ({ message }: { message: string | undefined }) => {
           exit={{ y: -1024 }}
           transition={{ type: "spring", duration: 1 }}
         >
-          <Text fontSize="calc(80vw / 4)" fontWeight="bold" color="white">
+          <Text
+            fontSize={`calc(80vw / ${message.length})`}
+            fontWeight="bold"
+            textAlign="center"
+            color="white"
+          >
             {message}
           </Text>
         </motion.div>

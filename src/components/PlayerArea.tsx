@@ -24,7 +24,7 @@ const PlayerArea = ({
           // width: "576px",
           width: "100%",
           height: "256px",
-          backgroundColor: "gray.700",
+          backgroundColor: "transparent",
           padding: "8px",
           borderRadius: "8px",
         }}
@@ -42,7 +42,7 @@ const PlayerArea = ({
         // width: "576px",
         width: "100%",
         height: "256px",
-        backgroundColor: "gray.700",
+        backgroundColor: "transparent",
         padding: "8px",
         borderRadius: "8px",
         ...sx,

@@ -40,15 +40,19 @@ export default function GameMain({
     playerInfo?.id,
     serverState.players,
   );
-  const myPlayer = serverState.players.find((p) => p.id === playerInfo?.id);
+  const playingPlayer = serverState.players.find((p) => p.isPlaying);
+  const isMePlaying = playingPlayer?.id === playerInfo?.id;
+  const gameBgColor = isMePlaying ? "green.700" : "gray.700";
 
   useEffect(() => {
-    if (myPlayer?.isPlaying) {
+    if (isMePlaying) {
       setBigToastMessage("我的回合");
+    } else if (playingPlayer) {
+      setBigToastMessage(`${playingPlayer.name}开始行动`);
     } else {
       setBigToastMessage(undefined);
     }
-  }, [myPlayer?.isPlaying]);
+  }, [playingPlayer, isMePlaying]);
 
   useEffect(() => {
     if (serverState?.gameStage === "stage:game-over") {
@@ -63,7 +67,7 @@ export default function GameMain({
     <Center
       w="100vw"
       h="100vh"
-      bgColor="gray.700"
+      bgColor={gameBgColor}
       sx={{
         position: "relative",
       }}
@@ -115,7 +119,7 @@ export default function GameMain({
           w="100%"
           h="400px"
           padding="24px"
-          bgColor="gray.700"
+          bgColor={gameBgColor}
           borderRadius="16px"
           justifyContent="center"
         >

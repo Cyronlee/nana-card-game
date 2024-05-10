@@ -73,9 +73,9 @@ export async function POST(request: Request) {
     }
 
     if (action.action === "action:start-game") {
-      // if (serverState.gameStage !== "stage:lobby") {
-      //   throw new Error("game is already start");
-      // }
+      if (serverState.gameStage === "stage:in-game") {
+        throw new Error("game is already start");
+      }
       if (playerNumber <= 1) {
         throw new Error("requires two or more players");
       }
@@ -88,11 +88,11 @@ export async function POST(request: Request) {
         gameStage: "stage:in-game",
         gameSubStage: "sub:playing",
         cardDeck: [],
-        players: serverState.players.map((p, i) => ({
+        players: serverState.players.map((p) => ({
           ...p,
           hand: shuffled.splice(0, gameRule.handNumber).sort(sortByIdAsc),
           collection: [],
-          isPlaying: i === 0,
+          isPlaying: p.id === action.playerId,
           isWinner: false,
         })),
         publicCards: shuffled,
