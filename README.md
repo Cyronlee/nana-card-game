@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# NANA Online Board Game [中文](https://github.com/Cyronlee/nana-card-game/blob/master/README-zh.md)
 
-## Getting Started
+An online multiplayer card game.
 
-First, run the development server:
+![](https://github.com/Cyronlee/nana-card-game/blob/master/public/img/example.png?raw=true)
+
+Play by visiting [https://nana.cyron.site](https://nana.cyron.site) with your browser.
+
+It supports creating rooms and joining others' rooms.
+
+This website is hosted on `Vercel`, made with `NextJS` and `Framer motion`, and uses `Vercel KV (Redis)` to store server
+states.
+
+The entire architecture is completely free.
+
+⚠️Existing Issues: The free version of Vercel KV has a limit of 10,000 calls per day, which is only sufficient for 6
+people to play for 30 minutes. Errors may occur in the game due to this limitation; you can try deploying this project
+yourself and share it with your friends; I am also exploring other solutions to address this problem.
+
+## Development Roadmap
+
+You are welcome to join in developing more features, and submitting issues to help improve the project.
+
+- [x] Multiplayer online play
+- [x] Sound effects
+- [ ] Internationalization
+- [ ] Adaptation for small screens
+- [ ] Seat layout optimization for different number of players
+- [ ] Scoreboard
+- [ ] Progressive Web App (PWA) mode
+- [ ] Share players' mouse using WebRTC
+- [ ] Find a free Redis server
+- [ ] Find a free WebSocket server
+- [ ] More attractive animations
+- [ ] More appealing UI
+
+## Local Development
 
 ```bash
+npm install
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit http://localhost:2333 in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Disclaimer
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+This project is solely for the purpose of learning and communication of `NextJS` and `Framer motion`.
 
-## Learn More
+The card images used in the project are sourced from the internet and should not be used for profit-making activities.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+You are also welcome to join in and create unique card UI.
