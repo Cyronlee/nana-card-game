@@ -53,6 +53,10 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
     actionType: ActionPrefix,
     data?: any,
   ): Promise<ServerState> => {
+    if (actLoading) {
+      console.log("Action is currently loading, skipping fetch.");
+      return Promise.reject("Action is currently loading.");
+    }
     const res = await fetch("/api/action", {
       method: "POST",
       body: JSON.stringify({
@@ -70,7 +74,6 @@ const GameRoomPage = ({ params }: { params: { id: string } }) => {
   };
 
   const { run: act, loading: actLoading } = useRequest(actionExecutor, {
-    debounceWait: 800,
     manual: true,
     onSuccess: (result, params) => {
       mutateServerState(result);
