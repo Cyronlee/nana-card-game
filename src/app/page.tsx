@@ -23,6 +23,8 @@ import { BsGithub } from "react-icons/bs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LocalPlayerInfo } from "@/types";
 import GameRuleButton from "@/components/GameRuleButton";
+import LanguageButton from "@/components/LanguageButton";
+import { useTranslation } from "@/i18n/index";
 
 const GamePage = () => {
   const router = useRouter();
@@ -30,6 +32,7 @@ const GamePage = () => {
   const joinParam = searchParams.get("join");
 
   const toast = useToast();
+  const { t } = useTranslation();
 
   const [playerInfo, setPlayerInfo] = useLocalStorageState<LocalPlayerInfo>(
     "player-info",
@@ -134,7 +137,7 @@ const GamePage = () => {
             fontSize="6xl"
             fontWeight="extrabold"
           >
-            NANA Card Game{" "}
+            {t("NANA_GAME_TITLE")}{" "}
             <IconButton
               variant="outline"
               color="white"
@@ -154,19 +157,19 @@ const GamePage = () => {
             fontSize="lg"
             fontWeight="extrabold"
           >
-            2 ~ 6 Players Online <GameRuleButton />
+            {t("NANA_GAME_DESCRIPTION")} <GameRuleButton /> <LanguageButton />
           </Text>
         </VStack>
         {!joinParam && (
           <Card w="sm">
             <CardBody>
               <VStack spacing="24px" alignItems="start">
-                <Heading size="md">Create Game</Heading>
+                <Heading size="md">{t("CREATE_GAME")}</Heading>
                 {/*<Heading size="md">*/}
                 {/*  {playerInfo.id} {playerInfo.name}*/}
                 {/*</Heading>*/}
                 <InputGroup>
-                  <InputLeftAddon>Your Name</InputLeftAddon>
+                  <InputLeftAddon>{t("YOUR_NAME")}</InputLeftAddon>
                   <Input
                     value={playerInfo?.name}
                     onChange={(e) =>
@@ -176,7 +179,7 @@ const GamePage = () => {
                         name: e.target.value,
                       }))
                     }
-                    placeholder="Your Name"
+                    placeholder={t("YOUR_NAME")}
                   />
                 </InputGroup>
               </VStack>
@@ -189,7 +192,7 @@ const GamePage = () => {
                 colorScheme="blue"
                 onClick={() => hostRoom()}
               >
-                Create Game
+                {t("CREATE_GAME")}
               </Button>
             </CardFooter>
           </Card>
@@ -197,17 +200,17 @@ const GamePage = () => {
         <Card w="sm">
           <CardBody>
             <VStack spacing="24px" alignItems="start">
-              <Heading size="md">Join Game</Heading>
+              <Heading size="md">{t("JOIN_GAME")}</Heading>
               <InputGroup>
-                <InputLeftAddon>Game ID</InputLeftAddon>
+                <InputLeftAddon>{t("GAME_ID")}</InputLeftAddon>
                 <Input
-                  placeholder="Game ID"
+                  placeholder={t("GAME_ID")}
                   value={joinRoomId}
                   onChange={(e) => setJoinRoomId(e.target.value)}
                 />
               </InputGroup>
               <InputGroup>
-                <InputLeftAddon>Your Name</InputLeftAddon>
+                <InputLeftAddon>{t("YOUR_NAME")}</InputLeftAddon>
                 <Input
                   value={playerInfo?.name}
                   onChange={(e) =>
@@ -217,7 +220,7 @@ const GamePage = () => {
                       name: e.target.value,
                     }))
                   }
-                  placeholder="Your Name"
+                  placeholder={t("YOUR_NAME")}
                 />
               </InputGroup>
             </VStack>
@@ -230,7 +233,7 @@ const GamePage = () => {
               colorScheme="blue"
               onClick={() => joinRoom()}
             >
-              Join Game Room
+              {t("JOIN_GAME")}
             </Button>
           </CardFooter>
         </Card>

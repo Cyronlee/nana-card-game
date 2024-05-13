@@ -2,16 +2,15 @@
 
 import React from "react";
 import { IconButton } from "@chakra-ui/react";
-import { useLocalStorageState } from "ahooks";
 import { BiVolumeFull, BiVolumeMute } from "react-icons/bi";
 
 import { useGameSound } from "@/lib/use-game-sound";
-import { useGameContext } from "@/lib/game-context";
+import { useGameSettingsStore } from "@/store/setting-store";
 
 const VolumeButton = () => {
-  const { gameState, setGameState } = useGameContext();
+  let { soundEnabled, toggleSoundEnabled } = useGameSettingsStore();
 
-  let { playWoosh, playToggle } = useGameSound();
+  let { playToggle } = useGameSound();
 
   return (
     <IconButton
@@ -22,12 +21,12 @@ const VolumeButton = () => {
       size="sm"
       fontSize="20px"
       onClick={() => {
-        setGameState({ soundEnabled: !gameState.soundEnabled });
-        if (!gameState.soundEnabled) {
+        if (!soundEnabled) {
           playToggle();
         }
+        toggleSoundEnabled();
       }}
-      icon={gameState.soundEnabled ? <BiVolumeFull /> : <BiVolumeMute />}
+      icon={soundEnabled ? <BiVolumeFull /> : <BiVolumeMute />}
     />
   );
 };

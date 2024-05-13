@@ -1,13 +1,12 @@
 "use client";
-import React from "react";
 // @ts-ignore
 import useSound from "use-sound";
-import { useGameContext } from "@/lib/game-context";
+import { useGameSettingsStore } from "@/store/setting-store";
 
 export const useGameSound = () => {
-  const { gameState } = useGameContext();
+  let { soundEnabled } = useGameSettingsStore();
 
-  const soundOption = { soundEnabled: gameState.soundEnabled };
+  const soundOption = { soundEnabled: soundEnabled };
 
   const [playWin] = useSound("/sound/win.mp3", soundOption);
   const [playSwing] = useSound("/sound/swing.wav", soundOption);

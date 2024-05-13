@@ -1,10 +1,9 @@
 "use client";
 
 import React from "react";
-import { Button, Center, Text, VStack } from "@chakra-ui/react";
+import { Button, Text, VStack } from "@chakra-ui/react";
 import { useGameSound } from "@/lib/use-game-sound";
 import VolumeButton from "@/components/VolumeButton";
-import { useGameContext } from "@/lib/game-context";
 
 const Page = () => {
   let { playWin, playSuccess } = useGameSound();
