@@ -5,26 +5,25 @@ import {
   Card,
   CardBody,
   CardFooter,
+  Center,
   Divider,
   Heading,
-  Text,
+  IconButton,
   Input,
-  Center,
   InputGroup,
   InputLeftAddon,
-  VStack,
-  IconButton,
+  Text,
   useToast,
+  VStack,
 } from "@chakra-ui/react";
-import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
-import { useLocalStorageState } from "ahooks";
+import React, { useLayoutEffect, useState } from "react";
 import { randomString } from "@/lib/random";
 import { BsGithub } from "react-icons/bs";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LocalPlayerInfo } from "@/types";
 import GameRuleButton from "@/components/GameRuleButton";
 import LanguageButton from "@/components/LanguageButton";
 import { useTranslation } from "@/i18n/index";
+import { useGameSettingsStore } from "@/store/setting-store";
 
 const GamePage = () => {
   const router = useRouter();
@@ -34,15 +33,8 @@ const GamePage = () => {
   const toast = useToast();
   const { t } = useTranslation();
 
-  const [playerInfo, setPlayerInfo] = useLocalStorageState<LocalPlayerInfo>(
-    "player-info",
-    {
-      defaultValue: {
-        id: randomString(4),
-        name: "",
-      },
-    },
-  );
+  let { playerId, setPlayerId, playerName, setPlayerName } =
+    useGameSettingsStore();
 
   const [joinRoomId, setJoinRoomId] = useState("");
 
@@ -51,7 +43,7 @@ const GamePage = () => {
   }, [joinParam]);
 
   const hostRoom = async () => {
-    if (!playerInfo?.name) {
+    if (!playerName) {
       toast({
         title: `请输入玩家名称`,
         status: "error",
@@ -66,11 +58,11 @@ const GamePage = () => {
       method: "POST",
       body: JSON.stringify({
         gameId: newGameId,
-        playerId: playerInfo?.id,
+        playerId: playerId,
         action: "action:host",
         data: {
-          playerId: playerInfo?.id,
-          playerName: playerInfo?.name,
+          playerId: playerId,
+          playerName: playerName,
         },
       }),
     });
@@ -90,7 +82,7 @@ const GamePage = () => {
   };
 
   const joinRoom = async () => {
-    if (!playerInfo?.name) {
+    if (!playerName) {
       toast({
         title: `请输入玩家名称`,
         status: "error",
@@ -105,10 +97,10 @@ const GamePage = () => {
       body: JSON.stringify({
         action: "action:join",
         gameId: joinRoomId,
-        playerId: playerInfo?.id,
+        playerId: playerId,
         data: {
-          playerId: playerInfo?.id,
-          playerName: playerInfo?.name,
+          playerId: playerId,
+          playerName: playerName,
         },
       }),
     });
@@ -171,14 +163,8 @@ const GamePage = () => {
                 <InputGroup>
                   <InputLeftAddon>{t("YOUR_NAME")}</InputLeftAddon>
                   <Input
-                    value={playerInfo?.name}
-                    onChange={(e) =>
-                      // @ts-ignore
-                      setPlayerInfo((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                    }
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
                     placeholder={t("YOUR_NAME")}
                   />
                 </InputGroup>
@@ -212,14 +198,8 @@ const GamePage = () => {
               <InputGroup>
                 <InputLeftAddon>{t("YOUR_NAME")}</InputLeftAddon>
                 <Input
-                  value={playerInfo?.name}
-                  onChange={(e) =>
-                    // @ts-ignore
-                    setPlayerInfo((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
                   placeholder={t("YOUR_NAME")}
                 />
               </InputGroup>

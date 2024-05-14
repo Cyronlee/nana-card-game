@@ -2,17 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import {
+  Box,
   Button,
   Center,
-  Text,
-  VStack,
-  Box,
   HStack,
   Tag,
-  Icon,
+  Text,
+  VStack,
 } from "@chakra-ui/react";
-import { useLocalStorageState } from "ahooks";
-import { ActionPrefix, LocalPlayerInfo, Message, ServerState } from "@/types";
+import { ActionPrefix, ServerState } from "@/types";
 import PlayerArea from "@/components/PlayerArea";
 import CardDeck from "@/components/CardDeck";
 import PublicArea from "@/components/PublicArea";
@@ -21,9 +19,9 @@ import { useGameToast } from "@/lib/use-game-toast";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
 import ChatArea from "@/components/ChatArea";
-import { RiFullscreenFill } from "react-icons/ri";
 import BigToast from "@/components/BigToast";
 import { useGameSound } from "@/lib/use-game-sound";
+import { useGameSettingsStore } from "@/store/setting-store";
 
 export default function GameMain({
   serverState,
@@ -32,21 +30,25 @@ export default function GameMain({
   serverState: ServerState;
   act: (action: ActionPrefix, data?: any) => void;
 }) {
+  // hooks
+  const { playerId } = useGameSettingsStore();
   const { width, height } = useWindowSize();
   const [bigToastMessage, setBigToastMessage] = useState<string | undefined>();
 
-  const [playerInfo] = useLocalStorageState<LocalPlayerInfo>("player-info");
-  let { toastError, toastInfo, toastOk } = useGameToast();
-  let { playWoosh, playWin, playSwing, playFlip, playSuccess, playDingDong } =
+  const { toastError, toastInfo, toastOk } = useGameToast();
+  const { playWoosh, playWin, playSwing, playFlip, playSuccess, playDingDong } =
     useGameSound();
+
+  // calculations
+  const playingPlayer = serverState.players.find((p) => p.isPlaying);
+  const isMePlaying = playingPlayer?.id === playerId;
+  const gameBgColor = isMePlaying ? "green.700" : "gray.700";
   const displayPlayerIndices = calculateDisplayPlayerIndices(
-    playerInfo?.id,
+    playerId,
     serverState.players,
   );
-  const playingPlayer = serverState.players.find((p) => p.isPlaying);
-  const isMePlaying = playingPlayer?.id === playerInfo?.id;
-  const gameBgColor = isMePlaying ? "green.700" : "gray.700";
 
+  // effects
   useEffect(() => {
     if (isMePlaying) {
       playDingDong();
@@ -69,6 +71,7 @@ export default function GameMain({
     }
   }, [serverState?.gameStage]);
 
+  // render
   return (
     <Center
       w="100vw"

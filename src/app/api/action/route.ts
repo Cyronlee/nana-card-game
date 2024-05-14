@@ -59,7 +59,8 @@ export async function POST(request: Request) {
         throw new Error("the room is full");
       }
       if (serverState.players.some((p) => p.id === action.playerId)) {
-        throw new Error("you are already in the room");
+        // player is already in the room
+        return serverState;
       }
       serverState.players.push({
         id: action.playerId,

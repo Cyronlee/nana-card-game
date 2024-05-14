@@ -8,7 +8,7 @@ import { useGameSettingsStore } from "@/store/setting-store";
 import { IoLanguage } from "react-icons/io5";
 
 const LanguageButton = () => {
-  let { language, switchLanguage } = useGameSettingsStore();
+  let { language, setLanguage } = useGameSettingsStore();
 
   return (
     <IconButton
@@ -19,7 +19,7 @@ const LanguageButton = () => {
       size="sm"
       fontSize="20px"
       onClick={() => {
-        switchLanguage(language === "zh" ? "en" : "zh");
+        setLanguage(language === "zh" ? "en" : "zh");
         i18n.changeLanguage(language === "zh" ? "en" : "zh");
       }}
       icon={<IoLanguage />}
