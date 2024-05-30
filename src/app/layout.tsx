@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
   title: "NANA",
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body>
         <Suspense>
           <Providers>{children}</Providers>
+          <Analytics />
         </Suspense>
       </body>
     </html>
