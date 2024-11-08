@@ -53,7 +53,7 @@ const GamePage = () => {
       });
       return;
     }
-    let newGameId = randomString(4);
+    let newGameId = Date.now().toString(36);
     const res = await fetch("/api/action", {
       method: "POST",
       body: JSON.stringify({
