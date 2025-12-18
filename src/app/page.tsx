@@ -24,6 +24,7 @@ import GameRuleButton from "@/components/GameRuleButton";
 import LanguageButton from "@/components/LanguageButton";
 import { useTranslation } from "@/i18n/index";
 import { useGameSettingsStore } from "@/store/setting-store";
+import { BsRobot } from "react-icons/bs";
 
 const GamePage = () => {
   const router = useRouter();
@@ -153,35 +154,68 @@ const GamePage = () => {
           </Text>
         </VStack>
         {!joinParam && (
-          <Card w="sm">
-            <CardBody>
-              <VStack spacing="24px" alignItems="start">
-                <Heading size="md">{t("CREATE_GAME")}</Heading>
-                {/*<Heading size="md">*/}
-                {/*  {playerInfo.id} {playerInfo.name}*/}
-                {/*</Heading>*/}
-                <InputGroup>
-                  <InputLeftAddon>{t("YOUR_NAME")}</InputLeftAddon>
-                  <Input
-                    value={playerName}
-                    onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder={t("YOUR_NAME")}
-                  />
-                </InputGroup>
-              </VStack>
-            </CardBody>
-            <Divider sx={{ borderColor: "gray.300" }} />
-            <CardFooter justifyContent="flex-end">
-              <Button
-                size="sm"
-                variant="solid"
-                colorScheme="blue"
-                onClick={() => hostRoom()}
-              >
-                {t("CREATE_GAME")}
-              </Button>
-            </CardFooter>
-          </Card>
+          <>
+            <Card
+              w="sm"
+              bg="green.50"
+              borderColor="green.200"
+              borderWidth="1px"
+            >
+              <CardBody>
+                <VStack spacing="16px" alignItems="start">
+                  <Heading size="md" color="green.700">
+                    <BsRobot
+                      style={{ display: "inline", marginRight: "8px" }}
+                    />
+                    单人模式
+                  </Heading>
+                  <Text color="green.600" fontSize="sm">
+                    与 1-5 个机器人对战，无需联网
+                  </Text>
+                </VStack>
+              </CardBody>
+              <Divider sx={{ borderColor: "green.200" }} />
+              <CardFooter justifyContent="flex-end">
+                <Button
+                  size="sm"
+                  variant="solid"
+                  colorScheme="green"
+                  onClick={() => router.push("/local")}
+                >
+                  开始单人模式
+                </Button>
+              </CardFooter>
+            </Card>
+            <Card w="sm">
+              <CardBody>
+                <VStack spacing="24px" alignItems="start">
+                  <Heading size="md">{t("CREATE_GAME")}</Heading>
+                  {/*<Heading size="md">*/}
+                  {/*  {playerInfo.id} {playerInfo.name}*/}
+                  {/*</Heading>*/}
+                  <InputGroup>
+                    <InputLeftAddon>{t("YOUR_NAME")}</InputLeftAddon>
+                    <Input
+                      value={playerName}
+                      onChange={(e) => setPlayerName(e.target.value)}
+                      placeholder={t("YOUR_NAME")}
+                    />
+                  </InputGroup>
+                </VStack>
+              </CardBody>
+              <Divider sx={{ borderColor: "gray.300" }} />
+              <CardFooter justifyContent="flex-end">
+                <Button
+                  size="sm"
+                  variant="solid"
+                  colorScheme="blue"
+                  onClick={() => hostRoom()}
+                >
+                  {t("CREATE_GAME")}
+                </Button>
+              </CardFooter>
+            </Card>
+          </>
         )}
         <Card w="sm">
           <CardBody>

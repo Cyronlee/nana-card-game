@@ -1,268 +1,420 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import {
+  Box,
   Button,
   Center,
   HStack,
   VStack,
   Text,
-  ButtonGroup,
-  useToast,
+  Heading,
+  Select,
+  Card,
+  CardBody,
+  CardFooter,
+  Divider,
+  IconButton,
 } from "@chakra-ui/react";
-import NanaCard from "@/components/NanaCard";
-import { shuffle } from "@/lib/random";
-import { useGameStore } from "@/store/game-store";
-import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
+import Confetti from "react-confetti";
+import { useRouter } from "next/navigation";
+import { BsArrowLeft } from "react-icons/bs";
 
-// const ALL_CARDS = Array.from({ length: 9 }, (_, index) => index + 1);
-const ALL_GAME_CARDS = [
-  "1-a",
-  "1-b",
-  "1-c",
-  "2-a",
-  "2-b",
-  "2-c",
-  // "3-a",
-  // "3-b",
-  // "3-c",
-];
+import { useLocalGameStore } from "@/store/local-game-store";
+import { useGameSound } from "@/lib/use-game-sound";
+import { useGameToast } from "@/lib/use-game-toast";
+import BigToast from "@/components/BigToast";
+import LocalPlayerArea from "@/app/local/components/LocalPlayerArea";
+import LocalPublicArea from "@/app/local/components/LocalPublicArea";
+import CardDeck from "@/components/CardDeck";
+import GameRuleButton from "@/components/GameRuleButton";
 
-export default function App() {
-  const { width, height } = useWindowSize();
-  const toast = useToast();
-  // const [cardDeck, setCardDeck] = useState(ALL_GAME_CARDS);
-  // const [myCards, setMyCards] = useState([]);
-  // const [botCards, setBotCards] = useState([]);
-  // const [publicCards, setPublicCards] = useState([]);
-  const [roundStage, setRoundStage] = useState("");
-  // const [revealedCards, setRevealedCards] = useState<string[]>([]);
+// Configuration screen
+function ConfigScreen() {
+  const router = useRouter();
+  const { botCount, setBotCount, startGame } = useLocalGameStore();
 
-  const {
-    players,
-    gameStage,
-    setGameStage,
-    dealRandomCardTo,
-    gameSubStage,
-    cardDeck,
-    publicCards,
-    getPlayer,
-    dealRestOfCards,
-    revealPublicCard,
-    revealPlayerCard,
-    resetTable,
-    getRevealedCards,
-  } = useGameStore();
-
-  const handleGameStart = () => {
-    if (gameStage === "seat") {
-      setGameStage("in-game");
-      dealCards();
+  const getBotInfo = (count: number) => {
+    const totalPlayers = count + 1;
+    switch (totalPlayers) {
+      case 2:
+        return { numbers: "1-10", handCards: 10, publicCards: 10 };
+      case 3:
+        return { numbers: "1-11", handCards: 8, publicCards: 9 };
+      case 4:
+        return { numbers: "1-12", handCards: 7, publicCards: 8 };
+      case 5:
+        return { numbers: "1-12", handCards: 6, publicCards: 6 };
+      case 6:
+        return { numbers: "1-12", handCards: 5, publicCards: 6 };
+      default:
+        return { numbers: "1-12", handCards: 7, publicCards: 8 };
     }
   };
 
-  const dealCards = () => {
-    let times = 0;
-    let intervalId = setInterval(() => {
-      dealRandomCardTo("me");
-      dealRandomCardTo("bot");
-      // dealRandomCard("public");
-      if (++times >= 3) {
-        clearInterval(intervalId);
-        setTimeout(() => {
-          dealRestOfCards();
-        }, 500);
-      }
-    }, 500);
-  };
+  const info = getBotInfo(botCount);
 
-  const resetGame = () => {
-    resetTable();
-  };
+  return (
+    <Center w="100vw" h="100vh" bgColor="gray.700">
+      <VStack gap="16px">
+        <VStack>
+          <Text
+            bgGradient="linear(to-r, gray.300, yellow.400, pink.200)"
+            bgClip="text"
+            fontSize="5xl"
+            fontWeight="extrabold"
+          >
+            单人模式
+          </Text>
+          <Text color="gray.300" fontSize="lg">
+            与机器人对战 <GameRuleButton />
+          </Text>
+        </VStack>
+
+        <Card w="sm" bg="gray.800" color="white">
+          <CardBody>
+            <VStack spacing="24px" alignItems="start">
+              <Heading size="md">游戏设置</Heading>
+
+              <VStack w="100%" alignItems="start" spacing="12px">
+                <Text>选择机器人数量：</Text>
+                <Select
+                  value={botCount}
+                  onChange={(e) => setBotCount(parseInt(e.target.value))}
+                  bg="gray.700"
+                  borderColor="gray.600"
+                >
+                  <option value={1}>1 个机器人 (2人局)</option>
+                  <option value={2}>2 个机器人 (3人局)</option>
+                  <option value={3}>3 个机器人 (4人局)</option>
+                  <option value={4}>4 个机器人 (5人局)</option>
+                  <option value={5}>5 个机器人 (6人局)</option>
+                </Select>
+              </VStack>
+
+              <VStack
+                w="100%"
+                p="12px"
+                bg="gray.700"
+                borderRadius="8px"
+                alignItems="start"
+                spacing="8px"
+              >
+                <Text fontWeight="bold">游戏配置：</Text>
+                <HStack justify="space-between" w="100%">
+                  <Text color="gray.400">使用数字：</Text>
+                  <Text>{info.numbers}</Text>
+                </HStack>
+                <HStack justify="space-between" w="100%">
+                  <Text color="gray.400">每人手牌：</Text>
+                  <Text>{info.handCards} 张</Text>
+                </HStack>
+                <HStack justify="space-between" w="100%">
+                  <Text color="gray.400">公共牌：</Text>
+                  <Text>{info.publicCards} 张</Text>
+                </HStack>
+              </VStack>
+            </VStack>
+          </CardBody>
+          <Divider borderColor="gray.600" />
+          <CardFooter justifyContent="space-between">
+            <Button
+              size="sm"
+              variant="ghost"
+              colorScheme="gray"
+              leftIcon={<BsArrowLeft />}
+              onClick={() => router.push("/")}
+            >
+              返回
+            </Button>
+            <Button
+              size="sm"
+              colorScheme="green"
+              onClick={startGame}
+            >
+              开始游戏
+            </Button>
+          </CardFooter>
+        </Card>
+      </VStack>
+    </Center>
+  );
+}
+
+// Main game screen
+function GameScreen() {
+  const { width, height } = useWindowSize();
+  const {
+    gameStage,
+    turnPhase,
+    players,
+    publicCards,
+    cardDeck,
+    currentPlayerIndex,
+    winner,
+    turnMessage,
+    resetGame,
+    revealPlayerCard,
+    revealPublicCard,
+    isCurrentPlayerBot,
+    getMyPlayer,
+    getCurrentPlayer,
+    executeBotTurn,
+  } = useLocalGameStore();
+
+  const { playWoosh, playWin, playSuccess, playDingDong } = useGameSound();
+  const { toastInfo, toastError, toastOk } = useGameToast();
+  const router = useRouter();
+
+  const [bigToastMessage, setBigToastMessage] = useState<string | undefined>();
+
+  const currentPlayer = getCurrentPlayer();
+  const myPlayer = getMyPlayer();
+  const isMyTurn = currentPlayer?.id === "me";
+  const gameBgColor = isMyTurn ? "green.700" : "gray.700";
+
+  // Sound and toast effects
+  useEffect(() => {
+    if (turnMessage) {
+      setBigToastMessage(turnMessage);
+      if (isMyTurn) {
+        playDingDong();
+      }
+    }
+  }, [turnMessage, currentPlayerIndex]);
 
   useEffect(() => {
-    const revealedCards = getRevealedCards();
-    if (revealedCards.length <= 1) {
-      return;
+    if (gameStage === "game-over") {
+      playWin();
     }
-    for (let i = 1; i < revealedCards.length; i++) {
-      if (
-        revealedCards[i].id.split("-")[0] !== revealedCards[0].id.split("-")[0]
-      ) {
-        setTimeout(() => {
-          setRoundStage("failed");
-          toast({
-            title: "挑战失败",
-            description: "试着连续翻出三张一样的数字",
-            status: "error",
-            duration: 9000,
-            isClosable: true,
-          });
-        }, 1000);
-        return;
-      }
-    }
-    if (revealedCards.length >= 3) {
-      setRoundStage("success");
-      toast({
-        title: "挑战成功",
-        description: "恭喜你连续翻出三张相同数字",
-        status: "success",
-        duration: 9000,
-        isClosable: true,
-      });
-      return;
-    }
-  }, [getRevealedCards()]);
+  }, [gameStage]);
 
-  const revealMyMinCard = () => {
-    // onFlipToFront(myCards[0]);
+  // Handle player card reveal action
+  const handleRevealPlayerCard = (playerId: string, minMax: "min" | "max") => {
+    if (!isMyTurn) {
+      toastInfo("请等待你的回合");
+      return;
+    }
+    revealPlayerCard(playerId, minMax);
+  };
+
+  // Handle public card reveal action
+  const handleRevealPublicCard = (cardId: string) => {
+    if (!isMyTurn) {
+      toastInfo("请等待你的回合");
+      return;
+    }
+    revealPublicCard(cardId);
+  };
+
+  // Calculate display indices for players around the table
+  const getDisplayPlayers = () => {
+    const myIndex = players.findIndex((p) => p.id === "me");
+    if (myIndex === -1) return { me: undefined, others: [] };
+
+    const me = players[myIndex];
+    const others = [
+      ...players.slice(myIndex + 1),
+      ...players.slice(0, myIndex),
+    ];
+
+    return { me, others };
+  };
+
+  const { me, others } = getDisplayPlayers();
+
+  // Layout based on number of bot players
+  const renderOtherPlayers = () => {
+    if (others.length === 0) return null;
+
+    if (others.length === 1) {
+      // 2 player game - opponent on top
+      return (
+        <LocalPlayerArea
+          player={others[0]}
+          onRevealCard={handleRevealPlayerCard}
+          isMyTurn={isMyTurn}
+        />
+      );
+    }
+
+    if (others.length === 2) {
+      // 3 player game - two opponents
+      return (
+        <HStack w="100%" justify="space-around">
+          <LocalPlayerArea
+            player={others[0]}
+            onRevealCard={handleRevealPlayerCard}
+            isMyTurn={isMyTurn}
+          />
+          <LocalPlayerArea
+            player={others[1]}
+            onRevealCard={handleRevealPlayerCard}
+            isMyTurn={isMyTurn}
+          />
+        </HStack>
+      );
+    }
+
+    if (others.length <= 3) {
+      // 4 player game
+      return (
+        <HStack w="100%" justify="space-around">
+          {others.map((player) => (
+            <LocalPlayerArea
+              key={player.id}
+              player={player}
+              onRevealCard={handleRevealPlayerCard}
+              isMyTurn={isMyTurn}
+            />
+          ))}
+        </HStack>
+      );
+    }
+
+    // 5-6 player game - two rows
+    const topRow = others.slice(0, Math.ceil(others.length / 2));
+    const bottomRow = others.slice(Math.ceil(others.length / 2));
+
+    return (
+      <VStack w="100%" spacing="8px">
+        <HStack w="100%" justify="space-around">
+          {topRow.map((player) => (
+            <LocalPlayerArea
+              key={player.id}
+              player={player}
+              onRevealCard={handleRevealPlayerCard}
+              isMyTurn={isMyTurn}
+              compact
+            />
+          ))}
+        </HStack>
+        <HStack w="100%" justify="space-around">
+          {bottomRow.map((player) => (
+            <LocalPlayerArea
+              key={player.id}
+              player={player}
+              onRevealCard={handleRevealPlayerCard}
+              isMyTurn={isMyTurn}
+              compact
+            />
+          ))}
+        </HStack>
+      </VStack>
+    );
   };
 
   return (
-    <Center w="100vw" h="100vh" bgColor="gray.100">
+    <Center
+      w="100vw"
+      h="100vh"
+      bgColor={gameBgColor}
+      position="relative"
+      overflow="hidden"
+    >
+      {/* Top right controls */}
+      <VStack position="fixed" top="16px" right="16px" zIndex={10}>
+        <HStack>
+          <Text color="white" fontSize="sm">
+            {turnPhase === "flip-1" && "翻第1张牌"}
+            {turnPhase === "flip-2" && "翻第2张牌"}
+            {turnPhase === "flip-3" && "翻第3张牌"}
+            {turnPhase === "success" && "收集成功！"}
+            {turnPhase === "failed" && "挑战失败"}
+          </Text>
+        </HStack>
+        <Button
+          size="sm"
+          colorScheme="gray"
+          onClick={resetGame}
+        >
+          重新开始
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          colorScheme="gray"
+          color="white"
+          onClick={() => {
+            resetGame();
+            router.push("/");
+          }}
+        >
+          返回首页
+        </Button>
+      </VStack>
+
+      {/* Main game layout */}
+      <VStack
+        w="100%"
+        maxW="1200px"
+        h="100vh"
+        p="16px"
+        spacing="16px"
+        justify="space-between"
+      >
+        {/* Other players area */}
+        <Box w="100%" minH="200px">
+          {renderOtherPlayers()}
+        </Box>
+
+        {/* Public area */}
+        <VStack
+          w="100%"
+          flex={1}
+          p="16px"
+          bgColor="blackAlpha.300"
+          borderRadius="16px"
+          justify="center"
+        >
+          <Text color="white" fontWeight="bold">
+            公共区
+          </Text>
+          {cardDeck && cardDeck.length > 0 && (
+            <CardDeck cards={cardDeck} />
+          )}
+          {publicCards && (
+            <LocalPublicArea
+              cards={publicCards}
+              onRevealCard={handleRevealPublicCard}
+              isMyTurn={isMyTurn}
+            />
+          )}
+        </VStack>
+
+        {/* My player area */}
+        {me && (
+          <LocalPlayerArea
+            player={me}
+            isMe={true}
+            onRevealCard={handleRevealPlayerCard}
+            isMyTurn={isMyTurn}
+          />
+        )}
+      </VStack>
+
+      {/* Confetti for win */}
       <Confetti
         width={width}
         height={height}
         recycle={false}
-        run={gameSubStage === "win"}
-        onConfettiComplete={() => setRoundStage("")}
+        run={gameStage === "game-over"}
       />
-      <VStack
-      // w="100vw"
-      // h="100vh"
-      >
-        <Text>Game Stage: {gameStage}</Text>
-        <Text>Round Stage: {roundStage}</Text>
 
-        <VStack w="900px" bgColor="#333" borderRadius="24px">
-          <Text color="white">电脑</Text>
-          <HStack h="136px" padding="8px" flexWrap="wrap">
-            {getPlayer("bot").hand.map((card, index) => (
-              <NanaCard
-                onClick={(cardId) => revealPlayerCard("bot", card.id)}
-                key={card.id}
-                cardId={card.id}
-                isRevealed={card.isRevealed}
-                w="90px"
-                h="120px"
-              />
-            ))}
-          </HStack>
-        </VStack>
-
-        <HStack
-          w="1200px"
-          // h="400px"
-          padding="24px"
-          border="24px solid "
-          bgColor="#333"
-          borderRadius="96px"
-          justifyContent="center"
-        >
-          <Center
-            w="140px"
-            h="180px"
-            borderRadius="24px"
-            // bgColor="#fff"
-            border="2px solid white"
-          >
-            {cardDeck.map((card, index) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, x: -200, y: -100 * index }}
-                animate={{ opacity: 1, x: 2 + index, y: 2 + index }}
-                transition={{ duration: 1 }}
-                style={{ position: "absolute" }}
-              >
-                <NanaCard
-                  onClick={(cardId) => {}}
-                  key={card.id}
-                  cardId={card.id}
-                  isRevealed={card.isRevealed}
-                  w="90px"
-                  h="120px"
-                />
-              </motion.div>
-            ))}
-          </Center>
-          <VStack
-            w="600px"
-            h="320px"
-            // bgColor="#fff"
-            border="2px solid white"
-            borderRadius="24px"
-          >
-            <Text fontColor="white">公共区</Text>
-            <HStack padding="8px" flexWrap="wrap">
-              {publicCards.map((card) => (
-                <NanaCard
-                  onClick={(cardId) => revealPublicCard(card.id)}
-                  key={card.id}
-                  cardId={card.id}
-                  isRevealed={card.isRevealed}
-                  w="90px"
-                  h="120px"
-                />
-              ))}
-            </HStack>
-          </VStack>
-
-          <VStack>
-            <Button
-              colorScheme="green"
-              onClick={() => handleGameStart()}
-              isDisabled={gameStage !== "seat"}
-            >
-              开始游戏
-            </Button>
-            {/*<Button colorScheme="green" onClick={() => shuffleCards()}>*/}
-            {/*  洗牌*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => dealRandomCard("bot")}>*/}
-            {/*  发牌给机器人*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => dealRandomCard("public")}>*/}
-            {/*  发牌到公共区*/}
-            {/*</Button>*/}
-            {/*<Button colorScheme="green" onClick={() => dealRandomCard("me")}>*/}
-            {/*  发牌给我*/}
-            {/*</Button>*/}
-            <Button colorScheme="green" onClick={() => resetGame()}>
-              重置
-            </Button>
-          </VStack>
-        </HStack>
-
-        <HStack>
-          <Button colorScheme="green" onClick={() => revealMyMinCard()}>
-            最小
-          </Button>
-          <VStack w="900px" bgColor="#333" borderRadius="24px">
-            <Text color="white">
-              已揭示的卡牌：
-              {getRevealedCards()
-                .map((c) => c.id)
-                .join(", ")}
-            </Text>
-            <HStack h="136px" padding="8px" flexWrap="wrap">
-              {getPlayer("me").hand.map((card) => (
-                <NanaCard
-                  onClick={(cardId) => revealPlayerCard("me", card.id)}
-                  key={card.id}
-                  cardId={card.id}
-                  isRevealed={card.isRevealed}
-                  w="90px"
-                  h="120px"
-                />
-              ))}
-            </HStack>
-          </VStack>
-          <Button colorScheme="green">最大</Button>
-        </HStack>
-      </VStack>
+      {/* Big toast message */}
+      <BigToast message={bigToastMessage} />
     </Center>
   );
+}
+
+// Main component
+export default function LocalGamePage() {
+  const { gameStage } = useLocalGameStore();
+
+  if (gameStage === "config") {
+    return <ConfigScreen />;
+  }
+
+  return <GameScreen />;
 }
