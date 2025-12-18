@@ -24,6 +24,7 @@ import { BsArrowLeft } from "react-icons/bs";
 import { useLocalGameStore } from "@/store/local-game-store";
 import { useGameSound } from "@/lib/use-game-sound";
 import { useGameToast } from "@/lib/use-game-toast";
+import { useTranslation } from "@/i18n/index";
 import BigToast from "@/components/BigToast";
 import LocalPlayerArea from "@/app/local/components/LocalPlayerArea";
 import LocalPublicArea from "@/app/local/components/LocalPublicArea";
@@ -33,6 +34,7 @@ import GameRuleButton from "@/components/GameRuleButton";
 // Configuration screen
 function ConfigScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { botCount, setBotCount, startGame } = useLocalGameStore();
 
   const getBotInfo = (count: number) => {
@@ -65,31 +67,31 @@ function ConfigScreen() {
             fontSize="5xl"
             fontWeight="extrabold"
           >
-            单人模式
+            {t("SINGLE_PLAYER_MODE")}
           </Text>
           <Text color="gray.300" fontSize="lg">
-            与机器人对战 <GameRuleButton />
+            {t("PLAY_AGAINST_BOTS")} <GameRuleButton />
           </Text>
         </VStack>
 
         <Card w="sm" bg="gray.800" color="white">
           <CardBody>
             <VStack spacing="24px" alignItems="start">
-              <Heading size="md">游戏设置</Heading>
+              <Heading size="md">{t("GAME_SETTINGS")}</Heading>
 
               <VStack w="100%" alignItems="start" spacing="12px">
-                <Text>选择机器人数量：</Text>
+                <Text>{t("SELECT_BOT_COUNT")}:</Text>
                 <Select
                   value={botCount}
                   onChange={(e) => setBotCount(parseInt(e.target.value))}
                   bg="gray.700"
                   borderColor="gray.600"
                 >
-                  <option value={1}>1 个机器人 (2人局)</option>
-                  <option value={2}>2 个机器人 (3人局)</option>
-                  <option value={3}>3 个机器人 (4人局)</option>
-                  <option value={4}>4 个机器人 (5人局)</option>
-                  <option value={5}>5 个机器人 (6人局)</option>
+                  <option value={1}>{t("BOT_COUNT_1")}</option>
+                  <option value={2}>{t("BOT_COUNT_2")}</option>
+                  <option value={3}>{t("BOT_COUNT_3")}</option>
+                  <option value={4}>{t("BOT_COUNT_4")}</option>
+                  <option value={5}>{t("BOT_COUNT_5")}</option>
                 </Select>
               </VStack>
 
@@ -101,18 +103,22 @@ function ConfigScreen() {
                 alignItems="start"
                 spacing="8px"
               >
-                <Text fontWeight="bold">游戏配置：</Text>
+                <Text fontWeight="bold">{t("GAME_CONFIG")}:</Text>
                 <HStack justify="space-between" w="100%">
-                  <Text color="gray.400">使用数字：</Text>
+                  <Text color="gray.400">{t("NUMBERS_USED")}:</Text>
                   <Text>{info.numbers}</Text>
                 </HStack>
                 <HStack justify="space-between" w="100%">
-                  <Text color="gray.400">每人手牌：</Text>
-                  <Text>{info.handCards} 张</Text>
+                  <Text color="gray.400">{t("HAND_CARDS")}:</Text>
+                  <Text>
+                    {info.handCards} {t("CARDS_UNIT")}
+                  </Text>
                 </HStack>
                 <HStack justify="space-between" w="100%">
-                  <Text color="gray.400">公共牌：</Text>
-                  <Text>{info.publicCards} 张</Text>
+                  <Text color="gray.400">{t("PUBLIC_CARDS")}:</Text>
+                  <Text>
+                    {info.publicCards} {t("CARDS_UNIT")}
+                  </Text>
                 </HStack>
               </VStack>
             </VStack>
@@ -126,14 +132,10 @@ function ConfigScreen() {
               leftIcon={<BsArrowLeft />}
               onClick={() => router.push("/")}
             >
-              返回
+              {t("BACK")}
             </Button>
-            <Button
-              size="sm"
-              colorScheme="green"
-              onClick={startGame}
-            >
-              开始游戏
+            <Button size="sm" colorScheme="green" onClick={startGame}>
+              {t("START_GAME")}
             </Button>
           </CardFooter>
         </Card>
@@ -145,6 +147,7 @@ function ConfigScreen() {
 // Main game screen
 function GameScreen() {
   const { width, height } = useWindowSize();
+  const { t } = useTranslation();
   const {
     gameStage,
     turnPhase,
@@ -193,7 +196,7 @@ function GameScreen() {
   // Handle player card reveal action
   const handleRevealPlayerCard = (playerId: string, minMax: "min" | "max") => {
     if (!isMyTurn) {
-      toastInfo("请等待你的回合");
+      toastInfo(t("WAIT_YOUR_TURN"));
       return;
     }
     revealPlayerCard(playerId, minMax);
@@ -202,7 +205,7 @@ function GameScreen() {
   // Handle public card reveal action
   const handleRevealPublicCard = (cardId: string) => {
     if (!isMyTurn) {
-      toastInfo("请等待你的回合");
+      toastInfo(t("WAIT_YOUR_TURN"));
       return;
     }
     revealPublicCard(cardId);
@@ -317,19 +320,15 @@ function GameScreen() {
       <VStack position="fixed" top="16px" right="16px" zIndex={10}>
         <HStack>
           <Text color="white" fontSize="sm">
-            {turnPhase === "flip-1" && "翻第1张牌"}
-            {turnPhase === "flip-2" && "翻第2张牌"}
-            {turnPhase === "flip-3" && "翻第3张牌"}
-            {turnPhase === "success" && "收集成功！"}
-            {turnPhase === "failed" && "挑战失败"}
+            {turnPhase === "flip-1" && t("FLIP_CARD_1")}
+            {turnPhase === "flip-2" && t("FLIP_CARD_2")}
+            {turnPhase === "flip-3" && t("FLIP_CARD_3")}
+            {turnPhase === "success" && t("CHALLENGE_SUCCESS")}
+            {turnPhase === "failed" && t("CHALLENGE_FAILED")}
           </Text>
         </HStack>
-        <Button
-          size="sm"
-          colorScheme="gray"
-          onClick={resetGame}
-        >
-          重新开始
+        <Button size="sm" colorScheme="gray" onClick={resetGame}>
+          {t("RESTART")}
         </Button>
         <Button
           size="sm"
@@ -341,7 +340,7 @@ function GameScreen() {
             router.push("/");
           }}
         >
-          返回首页
+          {t("BACK_HOME")}
         </Button>
       </VStack>
 
@@ -369,11 +368,9 @@ function GameScreen() {
           justify="center"
         >
           <Text color="white" fontWeight="bold">
-            公共区
+            {t("PUBLIC_AREA")}
           </Text>
-          {cardDeck && cardDeck.length > 0 && (
-            <CardDeck cards={cardDeck} />
-          )}
+          {cardDeck && cardDeck.length > 0 && <CardDeck cards={cardDeck} />}
           {publicCards && (
             <LocalPublicArea
               cards={publicCards}

@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { Box, VStack, HStack, Button, Center, Text } from "@chakra-ui/react";
 import { Player } from "@/types";
 import { useGameSound } from "@/lib/use-game-sound";
+import { useTranslation } from "@/i18n/index";
 import NanaCard from "@/components/NanaCard";
 import CollectionArea from "@/components/CollectionArea";
 import PlayerInfo from "@/components/PlayerInfo";
@@ -24,7 +25,9 @@ const LocalPlayerArea = ({
   compact = false,
 }: LocalPlayerAreaProps) => {
   const { playWoosh, playSuccess } = useGameSound();
-  const revealedCount = player?.hand?.filter((card) => card.isRevealed).length || 0;
+  const { t } = useTranslation();
+  const revealedCount =
+    player?.hand?.filter((card) => card.isRevealed).length || 0;
   const collectionCount = player?.collection?.length || 0;
 
   useEffect(() => {
@@ -77,7 +80,7 @@ const LocalPlayerArea = ({
             isDisabled={!isMyTurn}
             opacity={isMyTurn ? 1 : 0.6}
           >
-            选最小
+            {t("SELECT_MIN")}
           </Button>
 
           <HStack
@@ -120,7 +123,7 @@ const LocalPlayerArea = ({
             isDisabled={!isMyTurn}
             opacity={isMyTurn ? 1 : 0.6}
           >
-            选最大
+            {t("SELECT_MAX")}
           </Button>
         </HStack>
       )}
@@ -128,7 +131,7 @@ const LocalPlayerArea = ({
       {/* Show message if no cards */}
       {(!player.hand || player.hand.length === 0) && (
         <Center h="100px">
-          <Text color="gray.400">无手牌</Text>
+          <Text color="gray.400">{t("NO_HAND_CARDS")}</Text>
         </Center>
       )}
     </VStack>
@@ -136,4 +139,3 @@ const LocalPlayerArea = ({
 };
 
 export default LocalPlayerArea;
-

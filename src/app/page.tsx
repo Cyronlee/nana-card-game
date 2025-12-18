@@ -167,10 +167,10 @@ const GamePage = () => {
                     <BsRobot
                       style={{ display: "inline", marginRight: "8px" }}
                     />
-                    单人模式
+                    {t("SINGLE_PLAYER_MODE")}
                   </Heading>
                   <Text color="green.600" fontSize="sm">
-                    与 1-5 个机器人对战，无需联网
+                    {t("SINGLE_PLAYER_DESCRIPTION")}
                   </Text>
                 </VStack>
               </CardBody>
@@ -182,7 +182,7 @@ const GamePage = () => {
                   colorScheme="green"
                   onClick={() => router.push("/local")}
                 >
-                  开始单人模式
+                  {t("START_SINGLE_PLAYER")}
                 </Button>
               </CardFooter>
             </Card>

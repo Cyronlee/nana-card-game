@@ -4,6 +4,7 @@ import { enableMapSet } from "immer";
 import { Card, Player } from "@/types";
 import { GAME_RULES } from "@/lib/rules";
 import { shuffle } from "@/lib/random";
+import i18n from "@/i18n/index";
 
 // Enable Map/Set support in Immer
 enableMapSet();
@@ -29,11 +30,7 @@ import {
   CardPosition,
 } from "@/lib/bot-logic";
 
-export type LocalGameStage =
-  | "config"
-  | "dealing"
-  | "in-game"
-  | "game-over";
+export type LocalGameStage = "config" | "dealing" | "in-game" | "game-over";
 
 export type TurnPhase =
   | "waiting"
@@ -80,7 +77,13 @@ export interface LocalGameActions {
 }
 
 // Bot names for display
-const BOT_NAMES = ["Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", "Bot Epsilon"];
+const BOT_NAMES = [
+  "Bot Alpha",
+  "Bot Beta",
+  "Bot Gamma",
+  "Bot Delta",
+  "Bot Epsilon",
+];
 
 export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
   immer((set, get) => ({
@@ -127,7 +130,7 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
       // Add human player
       players.push({
         id: "me",
-        name: "我",
+        name: i18n.t("ME"),
         seat: 1,
         isHost: true,
         isPlaying: true,
@@ -195,7 +198,7 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
         state.currentPlayerIndex = 0;
         state.winner = null;
         state.botMemories = botMemories;
-        state.turnMessage = "我的回合";
+        state.turnMessage = i18n.t("MY_TURN");
       });
     },
 
@@ -303,7 +306,7 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
       if (challengeFailed(revealedCards)) {
         set((draft) => {
           draft.turnPhase = "failed";
-          draft.turnMessage = "挑战失败";
+          draft.turnMessage = i18n.t("CHALLENGE_FAILED");
         });
 
         // Wait and then reset cards
@@ -331,7 +334,7 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
       if (challengeSuccess(revealedCards)) {
         set((draft) => {
           draft.turnPhase = "success";
-          draft.turnMessage = "挑战成功！";
+          draft.turnMessage = i18n.t("CHALLENGE_SUCCESS");
         });
 
         const collectedNumber = revealedCards[0].number;
@@ -349,7 +352,10 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
 
               // Remove cards from hands and public
               removeTargetCards(
-                { players: draft.players, publicCards: draft.publicCards } as any,
+                {
+                  players: draft.players,
+                  publicCards: draft.publicCards,
+                } as any,
                 collectedNumber
               );
 
@@ -367,7 +373,7 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
               if (isPlayerWin(currentPlayer)) {
                 draft.winner = currentPlayer;
                 draft.gameStage = "game-over";
-                draft.turnMessage = `${currentPlayer.name} 获胜！`;
+                draft.turnMessage = `${currentPlayer.name} ${i18n.t("WINS")}`;
                 currentPlayer.isWinner = true;
                 return;
               }
@@ -416,7 +422,11 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
         draft.turnPhase = "flip-1";
 
         const currentPlayer = draft.players[draft.currentPlayerIndex];
-        draft.turnMessage = `${currentPlayer.name}的回合`;
+        if (currentPlayer.id === "me") {
+          draft.turnMessage = i18n.t("MY_TURN");
+        } else {
+          draft.turnMessage = `${currentPlayer.name}${i18n.t("BOT_TURN")}`;
+        }
       });
 
       // If next player is bot, execute bot turn
@@ -471,9 +481,7 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
       state.players.forEach((p) =>
         p.hand?.forEach((c) => c.isRevealed && revealedCards.push(c))
       );
-      state.publicCards?.forEach(
-        (c) => c.isRevealed && revealedCards.push(c)
-      );
+      state.publicCards?.forEach((c) => c.isRevealed && revealedCards.push(c));
       return revealedCards;
     },
 
@@ -489,4 +497,3 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
     },
   }))
 );
-
