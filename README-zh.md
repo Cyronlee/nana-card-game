@@ -4,9 +4,7 @@
 
 ![](https://github.com/Cyronlee/nana-card-game/blob/master/public/img/example.png?raw=true)
 
-此网站托管在`Vercel`上，使用`NextJS`和`Framer motion`制作，使用`Vercel KV(Redis)`存储服务器状态，整个架构完全免费。
-
-⚠️存在的问题：Vercel KV免费版每天有10000次调用限制，仅足够6人玩30分钟，游戏中可能会遇到由此引发的错误；你可以尝试自己部署此项目并分享给你的朋友们；我也在尝试其他的途径来解决这个问题。
+此网站托管在`Vercel`上，使用`NextJS`和`Framer motion`制作，使用`Redis`存储服务器状态。
 
 ## 开发路线
 
@@ -20,7 +18,6 @@
 - [ ] 记分板
 - [ ] PWA模式
 - [ ] 使用WebRTC共享玩家的鼠标
-- [ ] 寻找免费的Redis服务器
 - [ ] 寻找免费的Websocket服务器
 - [ ] 更好看的动效
 - [ ] 更好看的UI

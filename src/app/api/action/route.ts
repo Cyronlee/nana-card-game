@@ -1,4 +1,4 @@
-import { kv } from "@vercel/kv";
+import { getRedis } from "@/lib/redis";
 import { shuffle } from "@/lib/random";
 import {
   allRevealedCards,
@@ -16,6 +16,7 @@ import { ALL_CARDS, GAME_RULES } from "@/lib/rules";
 
 export async function POST(request: Request) {
   try {
+    const redis = await getRedis();
     const action = (await request.json()) as Action;
 
     // TODO use state design pattern
@@ -24,30 +25,29 @@ export async function POST(request: Request) {
       }
     }
     if (action.action === "action:host") {
-      await kv.set<ServerState>(
-        `game:${action.gameId}`,
-        {
-          gameId: action.gameId,
-          gameStage: "stage:lobby",
-          timestamp: Date.now(),
-          players: [
-            {
-              id: action.data.playerId,
-              name: action.data.playerName,
-              seat: 1,
-              isHost: true,
-              isPlaying: false,
-              hand: [],
-              collection: [],
-              isWinner: false,
-            },
-          ],
-          cardDeck: ALL_CARDS,
-          publicCards: [],
-          messages: [],
-        },
-        { ex: 60 * 60 },
-      );
+      const initialState: ServerState = {
+        gameId: action.gameId,
+        gameStage: "stage:lobby",
+        timestamp: Date.now(),
+        players: [
+          {
+            id: action.data.playerId,
+            name: action.data.playerName,
+            seat: 1,
+            isHost: true,
+            isPlaying: false,
+            hand: [],
+            collection: [],
+            isWinner: false,
+          },
+        ],
+        cardDeck: ALL_CARDS,
+        publicCards: [],
+        messages: [],
+      };
+      await redis.set(`game:${action.gameId}`, JSON.stringify(initialState), {
+        EX: 60 * 60,
+      });
     }
 
     const serverState = await getServerState(action.gameId);
@@ -179,15 +179,17 @@ export async function POST(request: Request) {
 }
 
 const getServerState = async (gameId: string) => {
-  const serverState = await kv.get<ServerState>(`game:${gameId}`);
-  if (!serverState) {
+  const redis = await getRedis();
+  const data = await redis.get(`game:${gameId}`);
+  if (!data) {
     throw new Error(`No game found for gameId: ${gameId}`);
   }
-  return serverState;
+  return JSON.parse(data) as ServerState;
 };
 
 export async function replaceState(gameId: string, serverState: ServerState) {
-  await kv.set<ServerState>(`game:${gameId}`, serverState);
+  const redis = await getRedis();
+  await redis.set(`game:${gameId}`, JSON.stringify(serverState));
 }
 
 export const setGameOver = async (

@@ -8,14 +8,7 @@ Play by visiting [https://nana.cyron.site](https://nana.cyron.site) with your br
 
 It supports creating rooms and joining others' rooms.
 
-This website is hosted on `Vercel`, made with `NextJS` and `Framer motion`, and uses `Vercel KV (Redis)` to store server
-states.
-
-The entire architecture is completely free.
-
-⚠️Existing Issues: The free version of Vercel KV has a limit of 10,000 calls per day, which is only sufficient for 6
-people to play for 30 minutes. Errors may occur in the game due to this limitation; you can try deploying this project
-yourself and share it with your friends; I am also exploring other solutions to address this problem.
+This website is hosted on `Vercel`, made with `NextJS` and `Framer motion`, and uses `Redis` to store server states.
 
 ## Development Roadmap
 
@@ -29,7 +22,6 @@ You are welcome to join in developing more features, and submitting issues to he
 - [ ] Scoreboard
 - [ ] Progressive Web App (PWA) mode
 - [ ] Share players' mouse using WebRTC
-- [ ] Find a free Redis server
 - [ ] Find a free WebSocket server
 - [ ] More attractive animations
 - [ ] More appealing UI

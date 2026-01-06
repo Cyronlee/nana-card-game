@@ -1,4 +1,4 @@
-import { kv } from "@vercel/kv";
+import { getRedis } from "@/lib/redis";
 import { NextRequest } from "next/server";
 import { ServerState } from "@/types";
 import { getCurrentAndNextPlayer, findWinner } from "@/lib/game-helper";
@@ -16,7 +16,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const serverState = await kv.get<ServerState>(`game:${gameId}`);
+  const redis = await getRedis();
+  const data = await redis.get(`game:${gameId}`);
+  const serverState = data ? (JSON.parse(data) as ServerState) : null;
 
   if (!serverState?.players.some((p) => p.id === playerId)) {
     return Response.json(
@@ -47,5 +49,5 @@ export async function GET(request: NextRequest) {
   return Response.json(serverState);
 }
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const fetchCache = "force-no-store";
