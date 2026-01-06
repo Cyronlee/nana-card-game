@@ -105,12 +105,14 @@ export const removeTargetCards = (
   serverState.players.forEach(
     (p) => (p.hand = p.hand?.filter((c) => c.number !== targetCardNumber)),
   );
-  // serverState.publicCards = serverState.publicCards?.filter(
-  //   (c) => c.number !== targetCardNumber,
-  // );
-  serverState.publicCards = serverState.publicCards?.map((c) =>
-    c.number === targetCardNumber ? { id: undefined } : c,
-  );
+  // Mutate array in place to work correctly with Immer drafts
+  if (serverState.publicCards) {
+    for (let i = 0; i < serverState.publicCards.length; i++) {
+      if (serverState.publicCards[i].number === targetCardNumber) {
+        (serverState.publicCards[i] as any) = { id: undefined };
+      }
+    }
+  }
 };
 
 export const calculateDisplayPlayerIndices = (

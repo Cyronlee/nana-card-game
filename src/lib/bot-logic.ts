@@ -1,1062 +1,950 @@
 import { Card, Player } from "@/types";
 import { sortByIdAsc, sortByIdDesc } from "@/lib/game-helper";
 
+// ==================== Types ====================
+
 /**
- * Bot Memory Structure - Perfect memory of all seen cards
- * Based on PRD: 机器人完美记忆所有历史翻牌信息
+ * 牌槽：表示一个位置上的牌，可能已知或未知
+ */
+export interface CardSlot {
+  cardId: string;
+  number: number | null; // null 表示未知
+}
+
+/**
+ * 玩家手牌记忆：从 bot 视角记录某玩家的手牌
+ * 数组已排序（从小到大），已知的牌有 number，未知的牌 number 为 null
+ */
+export interface PlayerHandMemory {
+  playerId: string;
+  cards: CardSlot[]; // 排序后的手牌槽位
+}
+
+/**
+ * Bot 记忆系统 - 只存储原始事实数据
  */
 export interface BotMemory {
-  // self_hand: Bot's own hand values (sorted)
-  selfHand: number[];
-  // player_states: player_id -> {hand_size, known_head, known_tail}
-  playerStates: Map<
-    string,
-    {
-      handSize: number;
-      knownHead: number | null;
-      knownTail: number | null;
-    }
-  >;
-  // center_size: Remaining public cards count
-  centerSize: number;
-  // remaining_counts: Each number's remaining count (initially 3)
-  remainingCounts: Map<number, number>;
-  // own_sets: Bot's collected set numbers
-  ownSets: number[];
-  // opponent_sets: opponent_id -> collected set numbers
-  opponentSets: Map<string, number[]>;
-  // Last seen card at each public card position: index -> cardNumber | null
-  lastSeenPublic: Map<number, number | null>;
-  // ALL numbers ever seen at head position for each player (perfect memory)
-  seenAtHead: Map<string, Set<number>>;
-  // ALL numbers ever seen at tail position for each player (perfect memory)
-  seenAtTail: Map<string, Set<number>>;
+  botId: string;
+
+  // 自己的手牌（完整已知）
+  myHand: CardSlot[];
+
+  // 其他玩家的手牌记忆
+  otherPlayersHands: Map<string, PlayerHandMemory>;
+
+  // 公共区牌（包含已知和未知）
+  publicCards: CardSlot[];
+
+  // 已收集的三条：playerId -> 收集的数字列表
+  collectedSets: Map<string, number[]>;
+
+  // 游戏使用的数字范围（根据玩家数量不同）
+  numberRange: { min: number; max: number };
 }
 
 /**
- * Card position for bot decision
- */
-export interface CardPosition {
-  type: "player-head" | "player-tail" | "public";
-  playerId?: string;
-  cardId?: string;
-  publicIndex?: number;
-}
-
-/**
- * Sum-7 pairs for winning condition: A+B=7 or |A-B|=7
- */
-const SUM_7_PAIRS: [number, number][] = [
-  [1, 6], // 1+6=7
-  [2, 5], // 2+5=7
-  [3, 4], // 3+4=7
-  [1, 8], // 8-1=7
-  [2, 9], // 9-2=7
-  [3, 10], // 10-3=7
-  [4, 11], // 11-4=7
-  [5, 12], // 12-5=7
-];
-
-/**
- * Create initial bot memory
- */
-export function createBotMemory(): BotMemory {
-  // Initialize remaining counts (1-12, each has 3 cards)
-  const remainingCounts = new Map<number, number>();
-  for (let i = 1; i <= 12; i++) {
-    remainingCounts.set(i, 3);
-  }
-
-  return {
-    selfHand: [],
-    playerStates: new Map(),
-    centerSize: 0,
-    remainingCounts,
-    ownSets: [],
-    opponentSets: new Map(),
-    lastSeenPublic: new Map(),
-    seenAtHead: new Map(),
-    seenAtTail: new Map(),
-  };
-}
-
-/**
- * Initialize bot memory with game state
- */
-export function initializeBotMemory(
-  memory: BotMemory,
-  players: Player[],
-  publicCards: Card[],
-  botId: string
-): void {
-  // Initialize player states
-  for (const player of players) {
-    const handSize = player.hand?.length || 0;
-    memory.playerStates.set(player.id, {
-      handSize,
-      knownHead: null,
-      knownTail: null,
-    });
-
-    // If this is the bot, store self hand
-    if (player.id === botId && player.hand) {
-      memory.selfHand = player.hand.map((c) => c.number).sort((a, b) => a - b);
-    }
-
-    // Initialize opponent sets
-    if (player.id !== botId) {
-      memory.opponentSets.set(player.id, []);
-    }
-  }
-
-  // Initialize center size
-  memory.centerSize = publicCards.filter((c) => c.id).length;
-}
-
-/**
- * Update bot memory after a card flip (when card is revealed but not collected)
- */
-export function updateBotMemory(
-  memory: BotMemory,
-  position: CardPosition,
-  cardNumber: number
-): void {
-  if (position.type === "player-head" && position.playerId) {
-    const state = memory.playerStates.get(position.playerId);
-    if (state) {
-      state.knownHead = cardNumber;
-    }
-    // Also track in seenAtHead (perfect memory - never forget)
-    let seenSet = memory.seenAtHead.get(position.playerId);
-    if (!seenSet) {
-      seenSet = new Set<number>();
-      memory.seenAtHead.set(position.playerId, seenSet);
-    }
-    seenSet.add(cardNumber);
-  } else if (position.type === "player-tail" && position.playerId) {
-    const state = memory.playerStates.get(position.playerId);
-    if (state) {
-      state.knownTail = cardNumber;
-    }
-    // Also track in seenAtTail (perfect memory - never forget)
-    let seenSet = memory.seenAtTail.get(position.playerId);
-    if (!seenSet) {
-      seenSet = new Set<number>();
-      memory.seenAtTail.set(position.playerId, seenSet);
-    }
-    seenSet.add(cardNumber);
-  } else if (position.type === "public" && position.publicIndex !== undefined) {
-    memory.lastSeenPublic.set(position.publicIndex, cardNumber);
-  }
-}
-
-/**
- * Update hand sizes in memory
- * Also initializes player states if they don't exist
- */
-export function updateHandSizes(memory: BotMemory, players: Player[]): void {
-  players.forEach((p) => {
-    const handSize = p.hand?.length || 0;
-    let state = memory.playerStates.get(p.id);
-    if (state) {
-      state.handSize = handSize;
-    } else {
-      // Initialize player state if it doesn't exist
-      memory.playerStates.set(p.id, {
-        handSize,
-        knownHead: null,
-        knownTail: null,
-      });
-    }
-  });
-
-  // Update center size if public cards info available
-  // This is handled separately when needed
-}
-
-/**
- * Clear memory for positions that have been collected (cards removed)
- * Called after a successful collection
- */
-export function clearCollectedCards(
-  memory: BotMemory,
-  collectedNumber: number,
-  players: Player[],
-  publicCards: Card[],
-  collectorId?: string,
-  botId?: string
-): void {
-  // Update remaining counts
-  const currentCount = memory.remainingCounts.get(collectedNumber) || 0;
-  memory.remainingCounts.set(collectedNumber, Math.max(0, currentCount - 3));
-
-  // Update own_sets or opponent_sets (only if both IDs provided)
-  if (collectorId && botId) {
-    if (collectorId === botId) {
-      memory.ownSets.push(collectedNumber);
-    } else {
-      const opponentSets = memory.opponentSets.get(collectorId) || [];
-      opponentSets.push(collectedNumber);
-      memory.opponentSets.set(collectorId, opponentSets);
-    }
-  }
-
-  // Clear from player head/tail if the card at that position was collected
-  players.forEach((p) => {
-    const state = memory.playerStates.get(p.id);
-    if (state) {
-      if (state.knownHead === collectedNumber) {
-        state.knownHead = null;
-      }
-      if (state.knownTail === collectedNumber) {
-        state.knownTail = null;
-      }
-      // Update hand size
-      state.handSize = p.hand?.length || 0;
-    }
-    // Also remove from seenAtHead/seenAtTail since those cards are now collected
-    const seenHead = memory.seenAtHead.get(p.id);
-    if (seenHead) {
-      seenHead.delete(collectedNumber);
-    }
-    const seenTail = memory.seenAtTail.get(p.id);
-    if (seenTail) {
-      seenTail.delete(collectedNumber);
-    }
-  });
-
-  // Clear from public cards
-  publicCards.forEach((card, index) => {
-    if (!card.id || memory.lastSeenPublic.get(index) === collectedNumber) {
-      memory.lastSeenPublic.set(index, null);
-    }
-  });
-
-  // Update center size
-  memory.centerSize = publicCards.filter((c) => c.id).length;
-
-  // Update self hand if bot collected
-  if (collectorId === botId) {
-    memory.selfHand = memory.selfHand.filter((n) => n !== collectedNumber);
-  }
-}
-
-/**
- * Get current extreme values (min and max of remaining cards)
- */
-function getCurrentExtremes(remainingCounts: Map<number, number>): {
-  minV: number;
-  maxV: number;
-} {
-  let minV = 12;
-  let maxV = 1;
-  for (let i = 1; i <= 12; i++) {
-    if ((remainingCounts.get(i) || 0) > 0) {
-      if (i < minV) minV = i;
-      if (i > maxV) maxV = i;
-    }
-  }
-  return { minV, maxV };
-}
-
-/**
- * Check if a number is extreme (equals current min or max)
- */
-function isExtreme(num: number, remainingCounts: Map<number, number>): boolean {
-  const { minV, maxV } = getCurrentExtremes(remainingCounts);
-  return num === minV || num === maxV;
-}
-
-/**
- * Get complement numbers for win condition (A+B=7 or |A-B|=7)
- */
-function getComplementNumbers(num: number): number[] {
-  const complements: number[] = [];
-  for (const [a, b] of SUM_7_PAIRS) {
-    if (a === num) complements.push(b);
-    if (b === num) complements.push(a);
-  }
-  return complements;
-}
-
-/**
- * Bot decision result
+ * Bot 决策结果
  */
 export interface BotDecision {
   action: "reveal-player-card" | "reveal-public-card";
-  playerId?: string;
-  minMax?: "min" | "max";
-  cardId?: string;
+  playerId?: string; // 目标玩家ID（翻玩家牌时）
+  minMax?: "min" | "max"; // 翻头还是翻尾
+  cardId?: string; // 公共区牌ID（翻公共牌时）
+  confidence: number; // 决策置信度 0-1
+  reasoning: string; // 决策理由（用于调试）
 }
 
 /**
- * Scored position for decision making
+ * 行动候选项
  */
-interface ScoredPosition {
-  position: CardPosition;
-  score: number;
-  cardId?: string;
+export interface ActionCandidate {
+  decision: BotDecision;
+  probability: number; // 翻到目标的概率
+  expectedValue: number; // 期望收益
+}
+
+// ==================== Memory Management ====================
+
+/**
+ * 根据玩家数量确定数字范围
+ */
+export function getNumberRangeForPlayerCount(playerCount: number): {
+  min: number;
+  max: number;
+} {
+  switch (playerCount) {
+    case 2:
+      return { min: 1, max: 10 }; // 2人局去掉11、12
+    case 3:
+      return { min: 1, max: 11 }; // 3人局去掉12
+    default:
+      return { min: 1, max: 12 }; // 4-6人使用全部
+  }
 }
 
 /**
- * Main bot decision function
- * Based on PRD scoring system
+ * 初始化 Bot 记忆
+ */
+export function initBotMemory(
+  botId: string,
+  botHand: Card[],
+  players: Player[],
+  publicCards: Card[],
+  numberRange: { min: number; max: number }
+): BotMemory {
+  // 1. 自己的手牌：完整已知，转换为 CardSlot[]
+  const myHand: CardSlot[] = botHand.map((c) => ({
+    cardId: c.id,
+    number: c.number, // 完全已知
+  }));
+
+  // 2. 其他玩家的手牌：只知道数量，不知道具体值
+  const otherPlayersHands = new Map<string, PlayerHandMemory>();
+  for (const player of players) {
+    if (player.id !== botId) {
+      otherPlayersHands.set(player.id, {
+        playerId: player.id,
+        cards: player.hand.map((c) => ({
+          cardId: c.id,
+          number: null, // 未知
+        })),
+      });
+    }
+  }
+
+  // 3. 公共区牌：初始全部未知
+  const publicCardsSlots: CardSlot[] = publicCards.map((c) => ({
+    cardId: c.id,
+    number: null,
+  }));
+
+  return {
+    botId,
+    myHand,
+    otherPlayersHands,
+    publicCards: publicCardsSlots,
+    collectedSets: new Map(),
+    numberRange,
+  };
+}
+
+/**
+ * 当牌被翻开时更新记忆
+ */
+export function updateMemoryOnReveal(
+  memory: BotMemory,
+  revealedCardId: string,
+  revealedNumber: number,
+  source: { type: "player"; playerId: string } | { type: "public" }
+): BotMemory {
+  // 创建新的记忆对象（不可变更新）
+  const newMemory = { ...memory };
+
+  if (source.type === "player") {
+    if (source.playerId === memory.botId) {
+      // 自己的牌被翻开（理论上已经知道，但仍需标记）
+      newMemory.myHand = memory.myHand.map((slot) =>
+        slot.cardId === revealedCardId
+          ? { ...slot, number: revealedNumber }
+          : slot
+      );
+    } else {
+      // 更新对应玩家手牌中的 CardSlot
+      const playerHand = memory.otherPlayersHands.get(source.playerId);
+      if (playerHand) {
+        const newOtherHands = new Map(memory.otherPlayersHands);
+        const newCards = playerHand.cards.map((slot) =>
+          slot.cardId === revealedCardId
+            ? { ...slot, number: revealedNumber }
+            : slot
+        );
+        newOtherHands.set(source.playerId, {
+          ...playerHand,
+          cards: newCards,
+        });
+        newMemory.otherPlayersHands = newOtherHands;
+      }
+    }
+  } else {
+    // 更新公共区牌
+    newMemory.publicCards = memory.publicCards.map((slot) =>
+      slot.cardId === revealedCardId
+        ? { ...slot, number: revealedNumber }
+        : slot
+    );
+  }
+
+  return newMemory;
+}
+
+/**
+ * 当三条被收集时更新记忆
+ */
+export function updateMemoryOnCollect(
+  memory: BotMemory,
+  collectorId: string,
+  collectedNumber: number
+): BotMemory {
+  const newMemory = { ...memory };
+
+  // 1. 记录收集
+  const newCollectedSets = new Map(memory.collectedSets);
+  const existing = newCollectedSets.get(collectorId) || [];
+  newCollectedSets.set(collectorId, [...existing, collectedNumber]);
+  newMemory.collectedSets = newCollectedSets;
+
+  // 2. 从自己手牌移除
+  newMemory.myHand = memory.myHand.filter(
+    (slot) => slot.number !== collectedNumber
+  );
+
+  // 3. 从其他玩家手牌移除
+  const newOtherHands = new Map<string, PlayerHandMemory>();
+  for (const [playerId, hand] of Array.from(memory.otherPlayersHands)) {
+    newOtherHands.set(playerId, {
+      ...hand,
+      cards: hand.cards.filter(
+        (slot: CardSlot) => slot.number !== collectedNumber
+      ),
+    });
+  }
+  newMemory.otherPlayersHands = newOtherHands;
+
+  // 4. 从公共区移除
+  newMemory.publicCards = memory.publicCards.filter(
+    (slot) => slot.number !== collectedNumber
+  );
+
+  return newMemory;
+}
+
+// ==================== Derived Calculations ====================
+
+/**
+ * 获取玩家已知的头值（最小端）
+ * 如果头牌已被翻开过且未被移除，返回该值；否则返回 null
+ */
+export function getKnownHeadValue(
+  memory: BotMemory,
+  playerId: string
+): number | null {
+  if (playerId === memory.botId) {
+    // 自己的头值总是已知
+    return memory.myHand[0]?.number ?? null;
+  }
+  const hand = memory.otherPlayersHands.get(playerId);
+  if (!hand || hand.cards.length === 0) return null;
+  // 头牌（第一张）如果已知则返回
+  return hand.cards[0].number;
+}
+
+/**
+ * 获取玩家已知的尾值（最大端）
+ */
+export function getKnownTailValue(
+  memory: BotMemory,
+  playerId: string
+): number | null {
+  if (playerId === memory.botId) {
+    return memory.myHand[memory.myHand.length - 1]?.number ?? null;
+  }
+  const hand = memory.otherPlayersHands.get(playerId);
+  if (!hand || hand.cards.length === 0) return null;
+  return hand.cards[hand.cards.length - 1].number;
+}
+
+/**
+ * 获取玩家当前手牌数量
+ */
+export function getHandSize(memory: BotMemory, playerId: string): number {
+  if (playerId === memory.botId) {
+    return memory.myHand.length;
+  }
+  return memory.otherPlayersHands.get(playerId)?.cards.length ?? 0;
+}
+
+/**
+ * 获取某数字在全局的剩余张数
+ * 计算方式：3 - 已收集的 - 已知在各位置的
+ */
+export function getGlobalRemainingCount(
+  memory: BotMemory,
+  targetNumber: number
+): number {
+  let remaining = 3; // 每个数字初始3张
+
+  // 减去已收集的
+  for (const collected of Array.from(memory.collectedSets.values())) {
+    if (collected.includes(targetNumber)) {
+      return 0; // 已被收集，剩余0张
+    }
+  }
+
+  // 减去自己手中的
+  remaining -= memory.myHand.filter((s) => s.number === targetNumber).length;
+
+  // 减去其他玩家已知的
+  for (const hand of Array.from(memory.otherPlayersHands.values())) {
+    remaining -= hand.cards.filter(
+      (s: CardSlot) => s.number === targetNumber
+    ).length;
+  }
+
+  // 减去公共区已知的
+  remaining -= memory.publicCards.filter(
+    (s) => s.number === targetNumber
+  ).length;
+
+  return Math.max(0, remaining);
+}
+
+/**
+ * 获取玩家手牌中已排除的数字集合
+ * 基于头尾约束推理：如果头=5，则 1-4 被排除
+ */
+export function getExcludedNumbers(
+  memory: BotMemory,
+  playerId: string
+): Set<number> {
+  const excluded = new Set<number>();
+  const headValue = getKnownHeadValue(memory, playerId);
+  const tailValue = getKnownTailValue(memory, playerId);
+
+  // 如果头值已知，则所有 < 头值的数字被排除
+  if (headValue !== null) {
+    for (let n = memory.numberRange.min; n < headValue; n++) {
+      excluded.add(n);
+    }
+  }
+
+  // 如果尾值已知，则所有 > 尾值的数字被排除
+  if (tailValue !== null) {
+    for (let n = tailValue + 1; n <= memory.numberRange.max; n++) {
+      excluded.add(n);
+    }
+  }
+
+  return excluded;
+}
+
+/**
+ * 获取公共区未知牌数量
+ */
+export function getUnknownPublicCount(memory: BotMemory): number {
+  return memory.publicCards.filter((s) => s.number === null).length;
+}
+
+/**
+ * 获取公共区中某数字的已知张数
+ */
+export function getKnownPublicCountForNumber(
+  memory: BotMemory,
+  targetNumber: number
+): number {
+  return memory.publicCards.filter((s) => s.number === targetNumber).length;
+}
+
+// ==================== Probability Calculation ====================
+
+/**
+ * 计算翻到目标数字的概率
+ */
+export function calculateProbability(
+  memory: BotMemory,
+  targetNumber: number,
+  source:
+    | { type: "player"; playerId: string; position: "head" | "tail" }
+    | { type: "public" }
+): number {
+  // 全局剩余0张，概率为0
+  const globalRemaining = getGlobalRemainingCount(memory, targetNumber);
+  if (globalRemaining === 0) return 0;
+
+  if (source.type === "player") {
+    const { playerId, position } = source;
+
+    // 获取已知值
+    const knownValue =
+      position === "head"
+        ? getKnownHeadValue(memory, playerId)
+        : getKnownTailValue(memory, playerId);
+
+    // 已知值：确定性判断
+    if (knownValue !== null) {
+      return knownValue === targetNumber ? 1.0 : 0.0;
+    }
+
+    // 未知值：概率估算
+    const excluded = getExcludedNumbers(memory, playerId);
+    if (excluded.has(targetNumber)) return 0;
+
+    // 简化估算：剩余张数 / 可能的数字范围
+    const possibleNumbers =
+      memory.numberRange.max - memory.numberRange.min + 1 - excluded.size;
+    if (possibleNumbers <= 0) return 0;
+
+    return Math.min(1, globalRemaining / possibleNumbers);
+  } else {
+    // 公共区概率
+    const unknownCount = memory.publicCards.filter(
+      (s) => s.number === null
+    ).length;
+    if (unknownCount === 0) return 0;
+
+    // 已知在公共区的数量
+    const knownInPublic = memory.publicCards.filter(
+      (s) => s.number === targetNumber
+    ).length;
+
+    // 剩余可能在公共区的数量
+    const possibleInPublic = globalRemaining - knownInPublic;
+    if (possibleInPublic <= 0) return 0;
+
+    return Math.min(1, possibleInPublic / unknownCount);
+  }
+}
+
+// ==================== Action Evaluation ====================
+
+/**
+ * 获取所有可能的行动
+ */
+export function getAllPossibleActions(
+  memory: BotMemory,
+  players: Player[],
+  publicCards: Card[]
+): BotDecision[] {
+  const actions: BotDecision[] = [];
+
+  // 遍历所有玩家（包括自己）
+  for (const player of players) {
+    const handSize = getHandSize(memory, player.id);
+    if (handSize === 0) continue;
+
+    // 检查是否有未翻开的头牌
+    let hasUnrevealedHead = false;
+    let hasUnrevealedTail = false;
+
+    if (player.id === memory.botId) {
+      // 自己的牌
+      hasUnrevealedHead = memory.myHand.length > 0;
+      hasUnrevealedTail = memory.myHand.length > 0;
+    } else {
+      const hand = memory.otherPlayersHands.get(player.id);
+      if (hand && hand.cards.length > 0) {
+        // 检查实际游戏中是否有未翻开的牌
+        const playerInGame = players.find((p) => p.id === player.id);
+        if (playerInGame) {
+          const unrevealedCards = playerInGame.hand.filter(
+            (c) => !c.isRevealed
+          );
+          hasUnrevealedHead = unrevealedCards.some((c) => {
+            // 找到这张牌在排序后的位置
+            const sortedUnrevealed = [...unrevealedCards].sort(sortByIdAsc);
+            return c.id === sortedUnrevealed[0]?.id;
+          });
+          hasUnrevealedTail = unrevealedCards.some((c) => {
+            const sortedUnrevealed = [...unrevealedCards].sort(sortByIdDesc);
+            return c.id === sortedUnrevealed[0]?.id;
+          });
+        }
+      }
+    }
+
+    if (hasUnrevealedHead) {
+      actions.push({
+        action: "reveal-player-card",
+        playerId: player.id,
+        minMax: "min",
+        confidence: 0,
+        reasoning: "",
+      });
+    }
+
+    if (hasUnrevealedTail && handSize > 1) {
+      actions.push({
+        action: "reveal-player-card",
+        playerId: player.id,
+        minMax: "max",
+        confidence: 0,
+        reasoning: "",
+      });
+    }
+  }
+
+  // 遍历公共区未翻开的牌
+  for (const card of publicCards) {
+    if (!card.isRevealed && card.id) {
+      actions.push({
+        action: "reveal-public-card",
+        cardId: card.id,
+        confidence: 0,
+        reasoning: "",
+      });
+    }
+  }
+
+  return actions;
+}
+
+/**
+ * 寻找已知两处相同数字的情况
+ */
+function findKnownPairOpportunity(
+  memory: BotMemory,
+  players: Player[]
+): {
+  number: number;
+  sources: Array<{ playerId: string; position: "head" | "tail" }>;
+} | null {
+  const knownValues: Array<{
+    number: number;
+    playerId: string;
+    position: "head" | "tail";
+  }> = [];
+
+  // 收集所有已知的头尾值
+  for (const player of players) {
+    const headValue = getKnownHeadValue(memory, player.id);
+    const tailValue = getKnownTailValue(memory, player.id);
+
+    if (headValue !== null) {
+      knownValues.push({
+        number: headValue,
+        playerId: player.id,
+        position: "head",
+      });
+    }
+    if (tailValue !== null && tailValue !== headValue) {
+      knownValues.push({
+        number: tailValue,
+        playerId: player.id,
+        position: "tail",
+      });
+    }
+  }
+
+  // 寻找两个相同数字
+  for (let i = 0; i < knownValues.length; i++) {
+    for (let j = i + 1; j < knownValues.length; j++) {
+      if (knownValues[i].number === knownValues[j].number) {
+        const num = knownValues[i].number;
+        // 确保这个数字还没被收集，且还有第三张
+        if (getGlobalRemainingCount(memory, num) >= 1) {
+          return {
+            number: num,
+            sources: [
+              {
+                playerId: knownValues[i].playerId,
+                position: knownValues[i].position,
+              },
+              {
+                playerId: knownValues[j].playerId,
+                position: knownValues[j].position,
+              },
+            ],
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * 寻找最佳第二/第三张牌的来源
+ */
+function findBestSourceForNumber(
+  memory: BotMemory,
+  targetNumber: number,
+  players: Player[],
+  publicCards: Card[],
+  excludeActions: BotDecision[] = []
+): ActionCandidate | null {
+  const candidates: ActionCandidate[] = [];
+
+  // 检查所有玩家的头尾
+  for (const player of players) {
+    const handSize = getHandSize(memory, player.id);
+    if (handSize === 0) continue;
+
+    // 检查头
+    const headProb = calculateProbability(memory, targetNumber, {
+      type: "player",
+      playerId: player.id,
+      position: "head",
+    });
+
+    if (headProb > 0) {
+      const decision: BotDecision = {
+        action: "reveal-player-card",
+        playerId: player.id,
+        minMax: "min",
+        confidence: headProb,
+        reasoning: `Probability of ${targetNumber} at ${player.id}'s head: ${(headProb * 100).toFixed(1)}%`,
+      };
+
+      // 检查是否在排除列表中
+      const isExcluded = excludeActions.some(
+        (a) =>
+          a.action === decision.action &&
+          a.playerId === decision.playerId &&
+          a.minMax === decision.minMax
+      );
+
+      if (!isExcluded) {
+        candidates.push({
+          decision,
+          probability: headProb,
+          expectedValue: headProb,
+        });
+      }
+    }
+
+    // 检查尾（如果有多张牌）
+    if (handSize > 1) {
+      const tailProb = calculateProbability(memory, targetNumber, {
+        type: "player",
+        playerId: player.id,
+        position: "tail",
+      });
+
+      if (tailProb > 0) {
+        const decision: BotDecision = {
+          action: "reveal-player-card",
+          playerId: player.id,
+          minMax: "max",
+          confidence: tailProb,
+          reasoning: `Probability of ${targetNumber} at ${player.id}'s tail: ${(tailProb * 100).toFixed(1)}%`,
+        };
+
+        const isExcluded = excludeActions.some(
+          (a) =>
+            a.action === decision.action &&
+            a.playerId === decision.playerId &&
+            a.minMax === decision.minMax
+        );
+
+        if (!isExcluded) {
+          candidates.push({
+            decision,
+            probability: tailProb,
+            expectedValue: tailProb,
+          });
+        }
+      }
+    }
+  }
+
+  // 检查公共区
+  const publicProb = calculateProbability(memory, targetNumber, {
+    type: "public",
+  });
+  if (publicProb > 0) {
+    // 找一张未翻开的公共牌
+    const unrevealedPublic = publicCards.find((c) => !c.isRevealed && c.id);
+    if (unrevealedPublic) {
+      const decision: BotDecision = {
+        action: "reveal-public-card",
+        cardId: unrevealedPublic.id,
+        confidence: publicProb,
+        reasoning: `Probability of ${targetNumber} in public: ${(publicProb * 100).toFixed(1)}%`,
+      };
+
+      const isExcluded = excludeActions.some(
+        (a) => a.action === decision.action && a.cardId === decision.cardId
+      );
+
+      if (!isExcluded) {
+        candidates.push({
+          decision,
+          probability: publicProb,
+          expectedValue: publicProb,
+        });
+      }
+    }
+  }
+
+  // 按概率排序，返回最高的
+  candidates.sort((a, b) => b.probability - a.probability);
+  return candidates[0] || null;
+}
+
+/**
+ * 寻找最有价值的起始目标数字
+ */
+function findBestTargetNumber(memory: BotMemory): number | null {
+  let bestNumber: number | null = null;
+  let bestScore = -1;
+
+  for (let n = memory.numberRange.min; n <= memory.numberRange.max; n++) {
+    const remaining = getGlobalRemainingCount(memory, n);
+    // 至少需要3张才能收集
+    if (remaining < 3) continue;
+
+    // 优先选择自己手中有的数字
+    const myCount = memory.myHand.filter((s) => s.number === n).length;
+    const score = remaining + myCount * 2; // 自己手中的牌有额外权重
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestNumber = n;
+    }
+  }
+
+  return bestNumber;
+}
+
+// ==================== Main Decision Function ====================
+
+/**
+ * Bot 主决策函数
  */
 export function makeBotDecision(
   memory: BotMemory,
+  currentChain: Card[],
   players: Player[],
-  publicCards: Card[],
-  revealedCards: Card[],
-  botId: string,
-  botCollection: Card[]
+  publicCards: Card[]
 ): BotDecision {
-  // Get already revealed numbers in current turn
-  const revealedNumbers = revealedCards.map((c) => c.number);
-  const targetNumber = revealedNumbers.length > 0 ? revealedNumbers[0] : null;
-  const chainLen = revealedNumbers.length;
+  const chainLength = currentChain.length;
+  const targetNumber = chainLength > 0 ? currentChain[0].number : null;
 
-  // Update own sets from collection
-  const collectedNumbers = Array.from(
-    new Set(botCollection.map((c) => c.number))
-  );
+  // ===== 已翻2张状态 (flip-3) =====
+  if (chainLength === 2 && targetNumber !== null) {
+    // 寻找第三张目标数字
+    const bestSource = findBestSourceForNumber(
+      memory,
+      targetNumber,
+      players,
+      publicCards
+    );
 
-  // Get already flipped positions in this chain (to avoid re-flipping)
-  const flippedPositions = new Set<string>();
-  // We track flipped positions by marking them during the turn
+    if (bestSource) {
+      return {
+        ...bestSource.decision,
+        reasoning: `[flip-3] Looking for third ${targetNumber}: ${bestSource.decision.reasoning}`,
+      };
+    }
 
-  if (targetNumber !== null) {
-    // Chase mode: target V is already defined
-    return decideChaseMode(
+    // 没有好的选择，随机翻一张（会失败但必须翻）
+    return makeExploratoryDecision(
       memory,
       players,
       publicCards,
+      "No good option for third card"
+    );
+  }
+
+  // ===== 已翻1张状态 (flip-2) =====
+  if (chainLength === 1 && targetNumber !== null) {
+    // 寻找第二张目标数字
+    const bestSource = findBestSourceForNumber(
+      memory,
       targetNumber,
-      chainLen,
-      botId,
-      flippedPositions
-    );
-  }
-
-  // Start new chain mode
-  return decideStartMode(memory, players, publicCards, botId, collectedNumbers);
-}
-
-/**
- * Chase Mode (追击模式): Have a target number, need to find matching cards
- * HIGHEST PRIORITY: Currently revealed cards that match target (100% guaranteed success!)
- * Score formula from PRD:
- * - Currently revealed card == V: 150 (HIGHEST - guaranteed match!)
- * - Known head/tail == V: 100
- * - Ever seen at head/tail == V (historical memory): 90
- * - Bot's own head/tail == V: 100
- * - Public: min(80, remaining[V] * 20)
- * - Unknown opponent head: 30 if V could be min
- * - Unknown opponent tail: 30 if V could be max
- * - Known head/tail != V: 0
- */
-function decideChaseMode(
-  memory: BotMemory,
-  players: Player[],
-  publicCards: Card[],
-  targetNumber: number,
-  chainLen: number,
-  botId: string,
-  flippedPositions: Set<string>
-): BotDecision {
-  const scoredPositions: ScoredPosition[] = [];
-  const remaining = memory.remainingCounts.get(targetNumber) || 0;
-  const { minV, maxV } = getCurrentExtremes(memory.remainingCounts);
-
-  // Calculate average card value for probability estimation
-  const avgValue = 6.5;
-  const isLowValue = targetNumber <= avgValue || targetNumber === minV;
-  const isHighValue = targetNumber >= avgValue || targetNumber === maxV;
-
-  // FIRST: Check for currently REVEALED cards that match target
-  // These are 100% guaranteed matches - highest priority!
-  for (const player of players) {
-    if (!player.hand || player.hand.length === 0) continue;
-
-    // Find revealed cards that match target number
-    const revealedMatches = player.hand.filter(
-      (c) => c.isRevealed && c.number === targetNumber
+      players,
+      publicCards
     );
 
-    for (const card of revealedMatches) {
-      // This is a revealed card matching our target - HIGHEST PRIORITY!
-      // We need to determine if it's at head or tail position to select it
-      const sortedHand = [...player.hand].sort(sortByIdAsc);
-      const cardIndex = sortedHand.findIndex((c) => c.id === card.id);
-
-      // Determine position type based on card's position in sorted hand
-      let posType: "player-head" | "player-tail";
-      let minMax: "min" | "max";
-
-      // If card is in the lower half, treat as head; otherwise as tail
-      if (cardIndex < sortedHand.length / 2) {
-        posType = "player-head";
-        minMax = "min";
-      } else {
-        posType = "player-tail";
-        minMax = "max";
-      }
-
-      // But we can only select unrevealed cards, so skip this revealed one
-      // The revealed cards are already in the chain!
-    }
-  }
-
-  // Check all players for UNREVEALED cards
-  for (const player of players) {
-    const state = memory.playerStates.get(player.id);
-    if (!state || state.handSize === 0) continue;
-
-    const headCard = getPlayerHeadCard(player);
-    const tailCard = getPlayerTailCard(player);
-
-    // Get historical memory for this player
-    const seenAtHead = memory.seenAtHead.get(player.id);
-    const seenAtTail = memory.seenAtTail.get(player.id);
-    const everSeenTargetAtHead = seenAtHead?.has(targetNumber) || false;
-    const everSeenTargetAtTail = seenAtTail?.has(targetNumber) || false;
-
-    // Check if the knownHead/knownTail refers to a currently revealed card
-    // If so, the current unrevealed head/tail is different - treat as unknown
-    const hasRevealedHead = player.hand?.some(
-      (c) => c.isRevealed && c.number === state.knownHead
-    );
-    const hasRevealedTail = player.hand?.some(
-      (c) => c.isRevealed && c.number === state.knownTail
-    );
-    // Effective known values (null if the known card is currently revealed)
-    const effectiveKnownHead = hasRevealedHead ? null : state.knownHead;
-    const effectiveKnownTail = hasRevealedTail ? null : state.knownTail;
-
-    // Count unrevealed cards that match target - these are still pickable
-    const unrevealedTargetCount =
-      player.hand?.filter((c) => !c.isRevealed && c.number === targetNumber)
-        .length || 0;
-
-    // Only use historical memory if player still has unrevealed cards matching target
-    // OR if we never actually saw the card values (player's cards are hidden from us)
-    const canUseHistoricalHead =
-      everSeenTargetAtHead &&
-      (unrevealedTargetCount > 0 || player.id !== botId);
-    const canUseHistoricalTail =
-      everSeenTargetAtTail &&
-      (unrevealedTargetCount > 0 || player.id !== botId);
-
-    // Check head position
-    if (headCard) {
-      const posKey = `head-${player.id}`;
-      if (!flippedPositions.has(posKey)) {
-        let score = 0;
-
-        if (effectiveKnownHead === targetNumber) {
-          // Known head matches target - HIGH PRIORITY
-          score = 100;
-        } else if (canUseHistoricalHead) {
-          // We saw target at head before and player still has unrevealed cards
-          // Key insight: after a failed turn, cards are concealed and re-sorted
-          // If we saw "1" at head before, the "1" card is likely back at head
-          score = 90; // High score for historical match - card is still in player's hand
-        } else if (effectiveKnownHead !== null) {
-          // Known head doesn't match and never seen target here
-          score = 0;
-        } else {
-          // Unknown head, never seen target here
-          if (isLowValue) {
-            score = 30;
-            // Bonus for unknown (prefer discovering new info)
-            score += 10;
-          } else {
-            score = 10;
-          }
-        }
-
-        if (score > 0) {
-          scoredPositions.push({
-            position: {
-              type: "player-head",
-              playerId: player.id,
-              cardId: headCard.id,
-            },
-            score,
-            cardId: headCard.id,
-          });
-        }
-      }
-    }
-
-    // Check tail position
-    if (tailCard) {
-      const posKey = `tail-${player.id}`;
-      if (!flippedPositions.has(posKey)) {
-        let score = 0;
-
-        if (effectiveKnownTail === targetNumber) {
-          // Known tail matches target - HIGH PRIORITY
-          score = 100;
-        } else if (canUseHistoricalTail) {
-          // We saw target at tail before and player still has unrevealed cards
-          score = 90; // High score for historical match
-        } else if (effectiveKnownTail !== null) {
-          // Known tail doesn't match and never seen target here
-          score = 0;
-        } else {
-          // Unknown tail, never seen target here
-          if (isHighValue) {
-            score = 30;
-            // Bonus for unknown
-            score += 10;
-          } else {
-            score = 10;
-          }
-        }
-
-        if (score > 0) {
-          scoredPositions.push({
-            position: {
-              type: "player-tail",
-              playerId: player.id,
-              cardId: tailCard.id,
-            },
-            score,
-            cardId: tailCard.id,
-          });
-        }
-      }
-    }
-  }
-
-  // Check public cards
-  publicCards.forEach((card, index) => {
-    if (!card.id || card.isRevealed) return;
-
-    const posKey = `public-${index}`;
-    if (flippedPositions.has(posKey)) return;
-
-    const knownNumber = memory.lastSeenPublic.get(index);
-    let score = 0;
-
-    if (knownNumber === targetNumber) {
-      // Known public card matches target
-      score = 100;
-    } else if (knownNumber !== null && knownNumber !== undefined) {
-      // Known public card doesn't match
-      score = 0;
-    } else {
-      // Unknown public card: min(80, remaining[V] * 20)
-      score = Math.min(80, remaining * 20);
-    }
-
-    if (score > 0) {
-      scoredPositions.push({
-        position: {
-          type: "public",
-          publicIndex: index,
-          cardId: card.id,
-        },
-        score,
-        cardId: card.id,
-      });
-    }
-  });
-
-  // Sort by score descending, with tie-breakers
-  scoredPositions.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-
-    // Tie-breaker: prefer other players when bot already revealed its card
-    // This prevents bot from depleting its own hand
-    const botHasRevealed = players
-      .find((p) => p.id === botId)
-      ?.hand?.some((c) => c.isRevealed);
-
-    const aIsSelf = a.position.playerId === botId;
-    const bIsSelf = b.position.playerId === botId;
-
-    if (botHasRevealed) {
-      // Prefer other players' cards when bot already has a revealed card
-      if (!aIsSelf && bIsSelf) return -1;
-      if (aIsSelf && !bIsSelf) return 1;
-    } else {
-      // Prefer self when starting
-      if (aIsSelf && !bIsSelf) return -1;
-      if (!aIsSelf && bIsSelf) return 1;
-    }
-
-    // Prefer player positions over public
-    if (a.position.type !== "public" && b.position.type === "public") return -1;
-    if (a.position.type === "public" && b.position.type !== "public") return 1;
-
-    return 0;
-  });
-
-  // Return the highest scored position
-  if (scoredPositions.length > 0) {
-    const best = scoredPositions[0];
-    if (best.position.type === "public") {
+    if (bestSource && bestSource.probability >= 0.1) {
       return {
-        action: "reveal-public-card",
-        cardId: best.cardId,
+        ...bestSource.decision,
+        reasoning: `[flip-2] Looking for second ${targetNumber}: ${bestSource.decision.reasoning}`,
       };
-    } else {
+    }
+
+    // 概率太低，考虑放弃（翻一张不匹配的结束回合）
+    // 但也可能继续冒险，困难模式倾向于冒险
+    if (bestSource) {
+      return {
+        ...bestSource.decision,
+        reasoning: `[flip-2] Taking a chance for ${targetNumber}: ${bestSource.decision.reasoning}`,
+      };
+    }
+
+    return makeExploratoryDecision(
+      memory,
+      players,
+      publicCards,
+      "No source for second card"
+    );
+  }
+
+  // ===== 空链状态 (flip-1) =====
+
+  // 策略1：检查是否已知两处相同数字
+  const pairOpp = findKnownPairOpportunity(memory, players);
+  if (pairOpp) {
+    // 先翻第一个已知位置
+    const firstSource = pairOpp.sources[0];
+    return {
+      action: "reveal-player-card",
+      playerId: firstSource.playerId,
+      minMax: firstSource.position === "head" ? "min" : "max",
+      confidence: 1.0,
+      reasoning: `[flip-1] Found known pair of ${pairOpp.number}, starting with ${firstSource.playerId}'s ${firstSource.position}`,
+    };
+  }
+
+  // 策略2：优先翻自己的头牌作为起点
+  if (memory.myHand.length > 0) {
+    const myHeadNumber = memory.myHand[0].number!;
+    const remaining = getGlobalRemainingCount(memory, myHeadNumber);
+
+    if (remaining >= 2) {
+      // 还能凑成三条
       return {
         action: "reveal-player-card",
-        playerId: best.position.playerId,
-        minMax: best.position.type === "player-head" ? "min" : "max",
+        playerId: memory.botId,
+        minMax: "min",
+        confidence: 0.8,
+        reasoning: `[flip-1] Starting with my head card (${myHeadNumber}), ${remaining + 1} total remaining`,
       };
     }
   }
 
-  // Fallback: flip any available card
-  return getFallbackDecision(players, publicCards, botId);
+  // 策略3：寻找最有价值的目标数字
+  const bestTarget = findBestTargetNumber(memory);
+  if (bestTarget !== null) {
+    // 找到这个数字最好的来源
+    const bestSource = findBestSourceForNumber(
+      memory,
+      bestTarget,
+      players,
+      publicCards
+    );
+
+    if (bestSource && bestSource.probability > 0) {
+      return {
+        ...bestSource.decision,
+        reasoning: `[flip-1] Targeting ${bestTarget}: ${bestSource.decision.reasoning}`,
+      };
+    }
+  }
+
+  // 策略4：探索性翻牌
+  return makeExploratoryDecision(
+    memory,
+    players,
+    publicCards,
+    "No clear target, exploring"
+  );
 }
 
 /**
- * Start New Chain Mode (起始新链模式): Select a target V to pursue
- * Priority from PRD:
- * 1. 7 (instant win, +50)
- * 2. Complement V: own_sets has W, |V-W|=7 (+40)
- * 3. Extreme V: current min/max (+30)
- * 4. Scarce V: remaining[V]<=2 (+20)
- * 5. High remaining V: remaining[V]=3 (score = remaining[V]*10)
+ * 探索性决策（没有明确目标时）
  */
-function decideStartMode(
+function makeExploratoryDecision(
   memory: BotMemory,
   players: Player[],
   publicCards: Card[],
-  botId: string,
-  ownSets: number[]
+  reason: string
 ): BotDecision {
-  const scoredPositions: ScoredPosition[] = [];
-  const { minV, maxV } = getCurrentExtremes(memory.remainingCounts);
+  // 优先翻对手的头牌（获取信息）
+  for (const player of players) {
+    if (player.id === memory.botId) continue;
 
-  // Calculate value scores for each possible target number
-  const valueScores = new Map<number, number>();
-
-  for (let v = 1; v <= 12; v++) {
-    const remaining = memory.remainingCounts.get(v) || 0;
-    if (remaining === 0) continue;
-
-    let score = 0;
-
-    // 1. 7 is highest priority (instant win)
-    if (v === 7) {
-      score += 50;
-    }
-
-    // 2. Complement V for existing sets
-    for (const w of ownSets) {
-      const complements = getComplementNumbers(w);
-      if (complements.includes(v)) {
-        score += 40;
-        break;
+    const headValue = getKnownHeadValue(memory, player.id);
+    if (headValue === null) {
+      // 头值未知，翻开它
+      const handSize = getHandSize(memory, player.id);
+      if (handSize > 0) {
+        return {
+          action: "reveal-player-card",
+          playerId: player.id,
+          minMax: "min",
+          confidence: 0.3,
+          reasoning: `[explore] ${reason}. Revealing ${player.id}'s head for information`,
+        };
       }
     }
-
-    // 3. Extreme V (current min or max)
-    if (v === minV || v === maxV) {
-      score += 30;
-    }
-
-    // 4. Scarce V
-    if (remaining <= 2) {
-      score += 20;
-    }
-
-    // 5. Base score from remaining count
-    score += remaining * 10;
-
-    valueScores.set(v, score);
   }
 
-  // For each valuable target V, find best starting position
-  for (const [targetV, valueScore] of Array.from(valueScores.entries())) {
-    const remaining = memory.remainingCounts.get(targetV) || 0;
-    const isLowV = targetV <= 6;
-    const isHighV = targetV >= 7;
-    const isExtremeV = targetV === minV || targetV === maxV;
+  // 翻公共牌
+  const unrevealedPublic = publicCards.find((c) => !c.isRevealed && c.id);
+  if (unrevealedPublic) {
+    return {
+      action: "reveal-public-card",
+      cardId: unrevealedPublic.id,
+      confidence: 0.2,
+      reasoning: `[explore] ${reason}. Revealing public card for information`,
+    };
+  }
 
-    // Check all players
-    for (const player of players) {
-      const state = memory.playerStates.get(player.id);
-      if (!state || state.handSize === 0) continue;
+  // 翻自己的牌（最后选择）
+  if (memory.myHand.length > 0) {
+    return {
+      action: "reveal-player-card",
+      playerId: memory.botId,
+      minMax: "min",
+      confidence: 0.1,
+      reasoning: `[explore] ${reason}. Revealing own card as last resort`,
+    };
+  }
 
-      const headCard = getPlayerHeadCard(player);
-      const tailCard = getPlayerTailCard(player);
-      const isSelf = player.id === botId;
+  // 实在没有选择
+  return {
+    action: "reveal-public-card",
+    cardId: publicCards[0]?.id || "",
+    confidence: 0,
+    reasoning: `[explore] No valid actions available`,
+  };
+}
 
-      // Get historical memory for this player
-      const seenAtHead = memory.seenAtHead.get(player.id);
-      const seenAtTail = memory.seenAtTail.get(player.id);
-      const everSeenTargetAtHead = seenAtHead?.has(targetV) || false;
-      const everSeenTargetAtTail = seenAtTail?.has(targetV) || false;
+/**
+ * 评估所有行动的期望收益
+ */
+export function evaluateAllActions(
+  memory: BotMemory,
+  currentChain: Card[],
+  players: Player[],
+  publicCards: Card[]
+): ActionCandidate[] {
+  const actions = getAllPossibleActions(memory, players, publicCards);
+  const candidates: ActionCandidate[] = [];
 
-      // Check head position
-      if (headCard) {
-        let posScore = 0;
+  const targetNumber = currentChain.length > 0 ? currentChain[0].number : null;
 
-        if (state.knownHead === targetV) {
-          // Known head matches target
-          posScore = remaining * 10 - 10; // Slightly lower (save for later)
-          if (isSelf) posScore += 20;
-        } else if (everSeenTargetAtHead) {
-          // Historical memory: we saw target at this player's head before
-          // The card is still in their hand, so there's a good chance to find it
-          posScore = remaining * 10; // Good score for historical match
-          if (isSelf) posScore += 20;
-        } else if (state.knownHead === null) {
-          // Unknown head - good for low values
-          if (isLowV) {
-            posScore = 40;
-            if (isExtremeV) posScore += 30;
-          } else {
-            posScore = 10;
-          }
-        }
-        // Known head != targetV and never seen: skip (score = 0)
+  for (const action of actions) {
+    let probability = 0;
+    let expectedValue = 0;
 
-        if (posScore > 0) {
-          scoredPositions.push({
-            position: {
-              type: "player-head",
-              playerId: player.id,
-              cardId: headCard.id,
-            },
-            score: valueScore + posScore,
-            cardId: headCard.id,
-          });
-        }
-      }
-
-      // Check tail position
-      if (tailCard) {
-        let posScore = 0;
-
-        if (state.knownTail === targetV) {
-          // Known tail matches target
-          posScore = remaining * 10 - 10;
-          if (isSelf) posScore += 20;
-        } else if (everSeenTargetAtTail) {
-          // Historical memory: we saw target at this player's tail before
-          posScore = remaining * 10;
-          if (isSelf) posScore += 20;
-        } else if (state.knownTail === null) {
-          // Unknown tail - good for high values
-          if (isHighV) {
-            posScore = 40;
-            if (isExtremeV) posScore += 30;
-          } else {
-            posScore = 10;
-          }
-        }
-
-        if (posScore > 0) {
-          scoredPositions.push({
-            position: {
-              type: "player-tail",
-              playerId: player.id,
-              cardId: tailCard.id,
-            },
-            score: valueScore + posScore,
-            cardId: tailCard.id,
-          });
-        }
-      }
-    }
-
-    // Check public cards
-    publicCards.forEach((card, index) => {
-      if (!card.id || card.isRevealed) return;
-
-      const knownNumber = memory.lastSeenPublic.get(index);
-      let posScore = 0;
-
-      if (knownNumber === targetV) {
-        posScore = remaining * 10 - 10;
-      } else if (knownNumber === null || knownNumber === undefined) {
-        // Unknown public card
-        posScore = 30;
-      }
-
-      if (posScore > 0) {
-        scoredPositions.push({
-          position: {
-            type: "public",
-            publicIndex: index,
-            cardId: card.id,
-          },
-          score: valueScore + posScore,
-          cardId: card.id,
+    if (targetNumber !== null) {
+      // 有目标数字，计算翻到目标的概率
+      if (action.action === "reveal-player-card" && action.playerId) {
+        probability = calculateProbability(memory, targetNumber, {
+          type: "player",
+          playerId: action.playerId,
+          position: action.minMax === "min" ? "head" : "tail",
+        });
+      } else if (action.action === "reveal-public-card") {
+        probability = calculateProbability(memory, targetNumber, {
+          type: "public",
         });
       }
+
+      // 期望收益
+      if (currentChain.length === 2) {
+        // 第三张，成功率就是期望收益
+        expectedValue = probability;
+      } else if (currentChain.length === 1) {
+        // 第二张，需要考虑后续成功的概率
+        expectedValue = probability * 0.5; // 简化估算
+      }
+    } else {
+      // 空链，探索价值
+      expectedValue = 0.1; // 基础探索价值
+    }
+
+    candidates.push({
+      decision: { ...action, confidence: probability },
+      probability,
+      expectedValue,
     });
   }
 
-  // Sort by score descending
-  scoredPositions.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
+  // 按期望收益排序
+  candidates.sort((a, b) => b.expectedValue - a.expectedValue);
 
-    // Tie-breaker: prefer self > players with fewer cards > public
-    const aIsSelf = a.position.playerId === botId;
-    const bIsSelf = b.position.playerId === botId;
-    if (aIsSelf && !bIsSelf) return -1;
-    if (!aIsSelf && bIsSelf) return 1;
-
-    // Prefer smaller hand players (easier to hit extremes)
-    if (a.position.playerId && b.position.playerId) {
-      const aState = memory.playerStates.get(a.position.playerId);
-      const bState = memory.playerStates.get(b.position.playerId);
-      if (aState && bState) {
-        if (aState.handSize !== bState.handSize) {
-          return aState.handSize - bState.handSize;
-        }
-      }
-    }
-
-    return 0;
-  });
-
-  // Return the highest scored position
-  if (scoredPositions.length > 0) {
-    const best = scoredPositions[0];
-    if (best.position.type === "public") {
-      return {
-        action: "reveal-public-card",
-        cardId: best.cardId,
-      };
-    } else {
-      return {
-        action: "reveal-player-card",
-        playerId: best.position.playerId,
-        minMax: best.position.type === "player-head" ? "min" : "max",
-      };
-    }
-  }
-
-  // Fallback: flip bot's own head (unknown territory)
-  return getFallbackDecision(players, publicCards, botId);
-}
-
-/**
- * Get the head (min) card of a player's hand
- */
-function getPlayerHeadCard(player: Player): Card | undefined {
-  if (!player.hand || player.hand.length === 0) return undefined;
-  const sortedHand = [...player.hand].filter((c) => !c.isRevealed);
-  sortedHand.sort(sortByIdAsc);
-  return sortedHand[0];
-}
-
-/**
- * Get the tail (max) card of a player's hand
- */
-function getPlayerTailCard(player: Player): Card | undefined {
-  if (!player.hand || player.hand.length === 0) return undefined;
-  const sortedHand = [...player.hand].filter((c) => !c.isRevealed);
-  sortedHand.sort(sortByIdDesc);
-  return sortedHand[0];
-}
-
-/**
- * Get fallback decision when no good options found
- */
-function getFallbackDecision(
-  players: Player[],
-  publicCards: Card[],
-  botId: string
-): BotDecision {
-  // Try bot's own head card
-  const bot = players.find((p) => p.id === botId);
-  if (bot && bot.hand && bot.hand.length > 0) {
-    const headCard = getPlayerHeadCard(bot);
-    if (headCard) {
-      return {
-        action: "reveal-player-card",
-        playerId: botId,
-        minMax: "min",
-      };
-    }
-  }
-
-  // Try any available public card
-  const availablePublicCard = publicCards.find((c) => c.id && !c.isRevealed);
-  if (availablePublicCard) {
-    return {
-      action: "reveal-public-card",
-      cardId: availablePublicCard.id,
-    };
-  }
-
-  // Try any other player's head
-  const otherPlayer = players.find(
-    (p) => p.hand && p.hand.length > 0 && p.id !== botId
-  );
-  if (otherPlayer) {
-    return {
-      action: "reveal-player-card",
-      playerId: otherPlayer.id,
-      minMax: "min",
-    };
-  }
-
-  // Last resort
-  return {
-    action: "reveal-player-card",
-    playerId: botId,
-    minMax: "min",
-  };
-}
-
-/**
- * Calculate card position type when a card is flipped
- */
-export function getFlipPositionType(
-  playerId: string | undefined,
-  minMax: "min" | "max" | undefined,
-  publicCardId: string | undefined
-): CardPosition {
-  if (publicCardId) {
-    return {
-      type: "public",
-      cardId: publicCardId,
-    };
-  }
-  return {
-    type: minMax === "min" ? "player-head" : "player-tail",
-    playerId: playerId,
-  };
-}
-
-/**
- * Check win condition based on PRD:
- * - 3 sets: win
- * - Has 7: win
- * - 2 sets with A+B=7 or |A-B|=7: win
- */
-export function checkWinCondition(collectedSets: number[]): boolean {
-  // 3 sets wins
-  if (collectedSets.length >= 3) return true;
-
-  // Has 7 wins
-  if (collectedSets.includes(7)) return true;
-
-  // 2 sets with complement condition
-  if (collectedSets.length >= 2) {
-    for (let i = 0; i < collectedSets.length; i++) {
-      for (let j = i + 1; j < collectedSets.length; j++) {
-        const a = collectedSets[i];
-        const b = collectedSets[j];
-        // Check A+B=7 or |A-B|=7
-        if (a + b === 7 || Math.abs(a - b) === 7) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
-/**
- * Get priority target numbers for the bot (for compatibility)
- * Priority: 7 > complement numbers for existing collections > low cards > high cards > mid cards
- */
-export function getPriorityTargetNumbers(collectedNumbers: number[]): number[] {
-  const priorities: number[] = [];
-
-  // 1. Always prioritize 7 (instant win)
-  priorities.push(7);
-
-  // 2. If bot has collected sets, prioritize complement numbers
-  if (collectedNumbers.length > 0) {
-    const uniqueCollected = Array.from(new Set(collectedNumbers));
-    for (const num of uniqueCollected) {
-      const complements = getComplementNumbers(num);
-      for (const comp of complements) {
-        if (!priorities.includes(comp)) {
-          priorities.push(comp);
-        }
-      }
-    }
-  }
-
-  // 3. Low cards (1-3) - extreme values
-  [1, 2, 3].forEach((n) => {
-    if (!priorities.includes(n)) priorities.push(n);
-  });
-
-  // 4. High cards (10-12) - extreme values
-  [10, 11, 12].forEach((n) => {
-    if (!priorities.includes(n)) priorities.push(n);
-  });
-
-  // 5. Mid cards (4-6, 8-9)
-  [4, 5, 6, 8, 9].forEach((n) => {
-    if (!priorities.includes(n)) priorities.push(n);
-  });
-
-  return priorities;
-}
-
-/**
- * Find all known card positions for a specific number (for compatibility)
- */
-export function findKnownPositionsForNumber(
-  memory: BotMemory,
-  targetNumber: number,
-  players: Player[],
-  publicCards: Card[],
-  botId: string
-): CardPosition[] {
-  const positions: CardPosition[] = [];
-
-  // Check player positions (prioritize bot's own cards first)
-  const sortedPlayers = [...players].sort((a, b) => {
-    if (a.id === botId) return -1;
-    if (b.id === botId) return 1;
-    return (b.hand?.length || 0) - (a.hand?.length || 0);
-  });
-
-  for (const player of sortedPlayers) {
-    const state = memory.playerStates.get(player.id);
-    if (!state) continue;
-
-    if (state.knownHead === targetNumber) {
-      const headCard = getPlayerHeadCard(player);
-      if (headCard) {
-        positions.push({
-          type: "player-head",
-          playerId: player.id,
-          cardId: headCard.id,
-        });
-      }
-    }
-    if (state.knownTail === targetNumber) {
-      const tailCard = getPlayerTailCard(player);
-      if (tailCard) {
-        positions.push({
-          type: "player-tail",
-          playerId: player.id,
-          cardId: tailCard.id,
-        });
-      }
-    }
-  }
-
-  // Check public cards
-  const publicEntries = Array.from(memory.lastSeenPublic.entries());
-  for (const [index, cardNumber] of publicEntries) {
-    if (cardNumber === targetNumber && publicCards[index]?.id) {
-      positions.push({
-        type: "public",
-        publicIndex: index,
-        cardId: publicCards[index].id,
-      });
-    }
-  }
-
-  return positions;
+  return candidates;
 }

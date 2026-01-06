@@ -6,7 +6,9 @@
     "dev": "next dev -p 2333",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.8.2",
@@ -37,6 +39,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.1",
     "prettier": "3.2.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^1.6.0"
   }
 }

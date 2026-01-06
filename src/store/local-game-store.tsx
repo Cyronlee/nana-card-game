@@ -5,9 +5,18 @@ import { Card, Player } from "@/types";
 import { GAME_RULES } from "@/lib/rules";
 import { shuffle } from "@/lib/random";
 import i18n from "@/i18n/index";
+import {
+  BotMemory,
+  initBotMemory,
+  updateMemoryOnReveal,
+  updateMemoryOnCollect,
+  makeBotDecision,
+  getNumberRangeForPlayerCount,
+} from "@/lib/bot-logic";
 
 // Enable Map/Set support in Immer
 enableMapSet();
+
 import {
   allRevealedCards,
   challengeFailed,
@@ -20,15 +29,6 @@ import {
   sortByIdAsc,
   sortByIdDesc,
 } from "@/lib/game-helper";
-import {
-  BotMemory,
-  createBotMemory,
-  updateBotMemory,
-  updateHandSizes,
-  clearCollectedCards,
-  makeBotDecision,
-  CardPosition,
-} from "@/lib/bot-logic";
 
 export type LocalGameStage = "config" | "dealing" | "in-game" | "game-over";
 
@@ -50,8 +50,9 @@ export interface LocalGameState {
   publicCards: Card[];
   currentPlayerIndex: number;
   winner: Player | null;
-  botMemories: Map<string, BotMemory>;
   turnMessage: string | null;
+  // Bot 记忆存储：每个 bot 维护自己的视角
+  botMemories: Map<string, BotMemory>;
 }
 
 export interface LocalGameActions {
@@ -96,8 +97,8 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
     publicCards: [],
     currentPlayerIndex: 0,
     winner: null,
-    botMemories: new Map(),
     turnMessage: null,
+    botMemories: new Map(),
 
     // Setup actions
     setBotCount: (count: number) => {
@@ -151,12 +152,6 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
         });
       }
 
-      // Create bot memories
-      const botMemories = new Map<string, BotMemory>();
-      for (let i = 0; i < botCount; i++) {
-        botMemories.set(`bot-${i + 1}`, createBotMemory());
-      }
-
       // Deal cards
       const { handNumber, publicNumber } = rules;
 
@@ -184,9 +179,21 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
         }
       }
 
-      // Update bot memories with initial hand sizes
-      for (const [botId, memory] of botMemories) {
-        updateHandSizes(memory, players);
+      // Create bot memories
+      const botMemories = new Map<string, BotMemory>();
+      const numberRange = getNumberRangeForPlayerCount(totalPlayers);
+
+      for (const player of players) {
+        if (player.id.startsWith("bot-")) {
+          const memory = initBotMemory(
+            player.id,
+            player.hand, // bot 自己的手牌（完整已知）
+            players,
+            publicCards,
+            numberRange
+          );
+          botMemories.set(player.id, memory);
+        }
       }
 
       set((state) => {
@@ -197,8 +204,8 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
         state.publicCards = publicCards;
         state.currentPlayerIndex = 0;
         state.winner = null;
-        state.botMemories = botMemories;
         state.turnMessage = i18n.t("MY_TURN");
+        state.botMemories = botMemories;
       });
     },
 
@@ -211,8 +218,8 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
         state.publicCards = [];
         state.currentPlayerIndex = 0;
         state.winner = null;
-        state.botMemories = new Map();
         state.turnMessage = null;
+        state.botMemories = new Map();
       });
     },
 
@@ -228,20 +235,24 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
       const cardId = findUnrevealedCardId(player.hand, minMax);
       if (!cardId) return;
 
+      const card = player.hand.find((c) => c.id === cardId);
+      if (!card) return;
+
       set((draft) => {
         const targetPlayer = draft.players.find((p) => p.id === playerId);
-        const card = targetPlayer?.hand.find((c) => c.id === cardId);
-        if (card) {
-          card.isRevealed = true;
+        const targetCard = targetPlayer?.hand.find((c) => c.id === cardId);
+        if (targetCard) {
+          targetCard.isRevealed = true;
 
-          // Update bot memories
-          const position: CardPosition = {
-            type: minMax === "min" ? "player-head" : "player-tail",
-            playerId: playerId,
-            cardId: cardId,
-          };
-          for (const [_, memory] of draft.botMemories) {
-            updateBotMemory(memory, position, card.number);
+          // Update all bot memories
+          for (const [botId, memory] of Array.from(draft.botMemories)) {
+            draft.botMemories.set(
+              botId,
+              updateMemoryOnReveal(memory, cardId, card.number, {
+                type: "player",
+                playerId,
+              })
+            );
           }
 
           // Update turn phase
@@ -274,14 +285,14 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
         if (targetCard) {
           targetCard.isRevealed = true;
 
-          // Update bot memories
-          const position: CardPosition = {
-            type: "public",
-            publicIndex: cardIndex,
-            cardId: cardId,
-          };
-          for (const [_, memory] of draft.botMemories) {
-            updateBotMemory(memory, position, targetCard.number);
+          // Update all bot memories
+          for (const [botId, memory] of Array.from(draft.botMemories)) {
+            draft.botMemories.set(
+              botId,
+              updateMemoryOnReveal(memory, cardId, card.number, {
+                type: "public",
+              })
+            );
           }
 
           // Update turn phase
@@ -359,13 +370,15 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
                 collectedNumber
               );
 
-              // Update bot memories
-              for (const [_, memory] of draft.botMemories) {
-                clearCollectedCards(
-                  memory,
-                  collectedNumber,
-                  draft.players,
-                  draft.publicCards
+              // Update all bot memories
+              for (const [botId, memory] of Array.from(draft.botMemories)) {
+                draft.botMemories.set(
+                  botId,
+                  updateMemoryOnCollect(
+                    memory,
+                    currentPlayerId,
+                    collectedNumber
+                  )
                 );
               }
 
@@ -449,19 +462,23 @@ export const useLocalGameStore = create<LocalGameState & LocalGameActions>()(
 
       const revealedCards = state.getRevealedCards();
 
-      // Make decision
+      // Make decision using bot logic
       const decision = makeBotDecision(
         memory,
-        state.players,
-        state.publicCards,
         revealedCards,
-        currentPlayer.id,
-        currentPlayer.collection
+        state.players,
+        state.publicCards
       );
+
+      // Debug log in development mode
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[Bot ${currentPlayer.id}] Decision:`, decision.reasoning);
+      }
 
       // Execute decision with delay for animation
       await new Promise((resolve) => setTimeout(resolve, 800));
 
+      // Execute the decision
       if (decision.action === "reveal-player-card" && decision.playerId) {
         get().revealPlayerCard(decision.playerId, decision.minMax || "min");
       } else if (decision.action === "reveal-public-card" && decision.cardId) {
